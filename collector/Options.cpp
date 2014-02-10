@@ -31,6 +31,7 @@ unsigned int Options::m_rateLimit = 0;
 DebugStream Options::m_debugStreams[DebugCount];
 std::string Options::m_pidFilePath;
 bool Options::m_daemonize = true;
+bool Options::m_enablecli = false;
 std::string Options::m_dbPath;
 std::string Options::m_dbUser;
 std::string Options::m_dbPass;
@@ -60,7 +61,8 @@ Options::parse(int argc, char *argv[])
 	 "Rate limit (in s) for writing numeric sensor values into DB")
 	("debug,d", bpo::value<std::string>()->default_value("none"),
 	 "Comma separated list of debug flags (all, io, message, data, stats, none) "
-	 " and their files, e.g. message=/tmp/messages.txt");
+	 " and their files, e.g. message=/tmp/messages.txt")
+        ("enable-cli,i", "Open the API interface (port 7777) as CLI (interactive)");
 
     bpo::options_description daemon("Daemon options");
     daemon.add_options()
@@ -134,6 +136,10 @@ Options::parse(int argc, char *argv[])
 
     if (variables.count("foreground")) {
 	m_daemonize = false;
+    }
+
+    if (variables.count("enable-cli")) {
+	m_enablecli = true;
     }
 
     if (variables.count("debug")) {

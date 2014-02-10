@@ -1,0 +1,21 @@
+This work is based on the ems-collectord by Danny Baumann.
+This is a experimental fork in order to make my research 
+available to the public as soon as possible.
+
+Furthermore this version is needed in order to drive
+my PHP-based Webinterface.
+
+This fork may have some features the original branch from
+danny does not have, but also may not be as stable and
+thourouhly designed as the main branch by Danny.
+
+The main goal is to add all the features of this release to 
+the main branch, so this fork will become obsolete.
+
+Please note that I am a lousy C++ programmer and feel free
+to improve the code wherever applicable.
+
+February 2014
+
+Michael Moosbauer
+schule@michael-moosbauer.de

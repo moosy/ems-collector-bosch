@@ -29,6 +29,7 @@
 #include <boost/shared_ptr.hpp>
 #include "EmsMessage.h"
 #include "TcpHandler.h"
+#include "Options.h"
 
 class CommandHandler;
 
@@ -51,6 +52,21 @@ class CommandConnection : public boost::enable_shared_from_this<CommandConnectio
 		boost::bind(&CommandConnection::handleRequest, shared_from_this(),
 			    boost::asio::placeholders::error));
 	}
+
+	void respond(const std::string& response) {
+	    boost::asio::async_write(m_socket, boost::asio::buffer(response + "\n"),
+		boost::bind(&CommandConnection::handleWrite, shared_from_this(),
+			    boost::asio::placeholders::error));
+	}
+
+	void prompt() {
+            if (Options::enablecli()) {
+	    boost::asio::async_write(m_socket, boost::asio::buffer("ems> "),
+		boost::bind(&CommandConnection::handleWrite, shared_from_this(),
+			    boost::asio::placeholders::error));
+  	  }
+        }
+
 	void close() {
 	    m_socket.close();
 	}
@@ -83,15 +99,14 @@ class CommandConnection : public boost::enable_shared_from_this<CommandConnectio
 	bool parseScheduleEntry(std::istream& request, EmsMessage::ScheduleEntry *entry);
 	bool parseHolidayEntry(const std::string& string, EmsMessage::HolidayEntry *entry);
 
-	void respond(const std::string& response) {
-	    boost::asio::async_write(m_socket, boost::asio::buffer(response + "\n"),
-		boost::bind(&CommandConnection::handleWrite, shared_from_this(),
-			    boost::asio::placeholders::error));
-	}
 	void scheduleResponseTimeout();
 	void responseTimeout(const boost::system::error_code& error);
 	void startRequest(uint8_t dest, uint8_t type, size_t offset, size_t length, bool newRequest = true);
 	bool continueRequest();
+        void printBool(int byte, int bit, const char *name, const std::vector<uint8_t>& data );
+        void printNumber(size_t offset, size_t size, int divider, const char *name, const char *unit, const std::vector<uint8_t>& data);
+        void printASCII(int byte, unsigned int len, const char *name, const std::vector<uint8_t>& data);
+        void printAuswahl(int byte,  const char *name, const std::vector<uint8_t>& data, const int key1, const char *v1, const int key2, const char *v2, const int key3, const char *v3, const int key4, const char *v4 );
 	void sendCommand(uint8_t dest, uint8_t type, uint8_t offset,
 			 const uint8_t *data, size_t count,
 			 bool expectResponse = false);
@@ -101,6 +116,7 @@ class CommandConnection : public boost::enable_shared_from_this<CommandConnectio
 	boost::asio::streambuf m_request;
 	CommandHandler& m_handler;
 	bool m_waitingForResponse;
+	bool m_showrawdata;
 	boost::asio::deadline_timer m_responseTimeout;
 	unsigned int m_responseCounter;
 	std::vector<uint8_t> m_requestResponse;

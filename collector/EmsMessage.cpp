@@ -144,6 +144,7 @@ EmsMessage::handle()
 		     * 0x8 0x10 0x1c 0x8
 		     */
 		    break;
+		case 0x33: parseUBAParameterWWMessage(); handled = true; break;
 		case 0x34: parseUBAMonitorWWMessage(); handled = true; break;
 	    }
 	    break;
@@ -320,7 +321,7 @@ EmsMessage::parseUBAMonitorSlowMessage()
     printNumberAndAddToDb(5, 2, 10, "Abgastemperatur", "°C",
 			  Database::NumericSensorLast);
     printNumberAndAddToDb(10, 1, 1, "Pumpenmodulation", "%",
-			  Database::NumericSensorLast);
+			  Database::SensorKesselpumpenModulation);
     printNumberAndAddToDb(11, 3, 1, "Brennerstarts", "",
 			  Database::SensorBrennerstarts);
     printNumberAndAddToDb(14, 3, 1, "Betriebszeit total", "min",
@@ -349,14 +350,15 @@ EmsMessage::parseUBAMonitorWWMessage()
     printNumberAndAddToDb(4, 2, 10, "Warmwasser-Isttemperatur (Messstelle 2)", "°C",
 			  Database::NumericSensorLast);
 
-    printBoolAndAddToDb(6, 0, "Tagbetrieb", Database::SensorWWTagbetrieb);
+    printBoolAndAddToDb(6, 0, "WW-Tagbetrieb", Database::SensorWWTagbetrieb);
     printBoolAndAddToDb(6, 1, "Einmalladung", Database::BooleanSensorLast);
     printBoolAndAddToDb(6, 2, "Thermische Desinfektion", Database::BooleanSensorLast);
     printBoolAndAddToDb(6, 3, "Warmwasserbereitung", Database::SensorWarmwasserBereitung);
     printBoolAndAddToDb(6, 4, "Warmwassernachladung", Database::BooleanSensorLast);
     printBoolAndAddToDb(6, 5, "Warmwassertemp OK", Database::SensorWarmwasserTempOK);
-
+    printBoolAndAddToDb(8, 0, "Zirkulation-Tagbetrieb", Database::SensorZirkulationTagbetrieb);
     printBoolAndAddToDb(8, 2, "Zirkulation", Database::SensorZirkulation);
+
 
     if (debug) {
 	debug << "DATA: Art des Warmwassersystems: ";
@@ -370,6 +372,32 @@ EmsMessage::parseUBAMonitorWWMessage()
 	debug << std::endl;
     }
 }
+
+
+
+void
+EmsMessage::parseUBAParameterWWMessage()
+{
+    DebugStream& debug = Options::dataDebug();
+
+    RETURN_ON_SIZE_MISMATCH(10, "UBA Parameter WW");
+
+    if (debug) {
+	debug << "DATA: Anzahl Schaltpunkte Zirkulation = ";
+	switch (m_data[8]) {
+	    case 1: debug << "1x 3min"; break;
+	    case 2: debug << "2x 3min"; break;
+	    case 3: debug << "3x 3min"; break;
+	    case 4: debug << "4x 3min"; break;
+	    case 5: debug << "5x 3min"; break;
+	    case 6: debug << "6x 3min"; break;
+	    case 7: debug << "staendig an"; break;
+	}
+	debug << std::endl;
+    }
+}
+
+
 
 void
 EmsMessage::parseUBAUnknown1Message()
@@ -550,7 +578,7 @@ EmsMessage::parseRCHKMonitorMessage(const char *name,
     printBoolAndAddToDb(1, 6, "Frostschutz", Database::BooleanSensorLast);
     printBoolAndAddToDb(1, 7, "Manueller Betrieb", Database::BooleanSensorLast);
     printBoolAndAddToDb(2, 0, "Sommerbetrieb", Database::SensorSommerbetrieb);
-    printBoolAndAddToDb(2, 1, "Tagbetrieb", tagSensor);
+    printBoolAndAddToDb(2, 1, "HK-Tagbetrieb", tagSensor);
     printBoolAndAddToDb(2, 7, "Partybetrieb", partySensor);
 
     text = "Schaltuhr ";

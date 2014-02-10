@@ -227,6 +227,8 @@ Database::createSensorRows()
 		  "Momentane Leistung", readingTypePercent, "%", 0);
     query.execute(SensorMaxLeistung, sensorTypeNumeric,
 		  "Maximale Leistung", readingTypePercent, "%", 0);
+    query.execute(SensorKesselpumpenModulation, sensorTypeNumeric,
+		  "Kesselpumpenmodulation", readingTypePercent, "%", 0);
     query.execute(SensorFlammenstrom, sensorTypeNumeric,
 		  "Flammenstrom", readingTypeCurrent, "µA", 1);
     query.execute(SensorSystemdruck, sensorTypeNumeric,
@@ -249,6 +251,7 @@ Database::createSensorRows()
     query.execute(SensorKesselPumpe, sensorTypeBoolean, "Kessel-Pumpe");
     query.execute(Sensor3WegeVentil, sensorTypeBoolean, "3-Wege-Ventil");
     query.execute(SensorZirkulation, sensorTypeBoolean, "Zirkulation");
+    query.execute(SensorZirkulationTagbetrieb, sensorTypeBoolean, "Zirkulation-Tagbetrieb");
     query.execute(SensorWarmwasserBereitung, sensorTypeBoolean, "Warmwasserbereitung");
     query.execute(SensorWWTagbetrieb, sensorTypeBoolean, "WW-Tagbetrieb");
     query.execute(SensorSommerbetrieb, sensorTypeBoolean, "Sommerbetrieb");

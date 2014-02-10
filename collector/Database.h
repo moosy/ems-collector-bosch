@@ -58,8 +58,9 @@ class Database {
 	    SensorBrennerstarts = 20,
 	    SensorWarmwasserbereitungsZeit = 21,
 	    SensorWarmwasserBereitungen = 22,
+	    SensorKesselpumpenModulation = 24,
 	    /* not valid for DB */
-	    NumericSensorLast = 24
+	    NumericSensorLast = 25
 	} NumericSensors;
 
 	typedef enum {
@@ -82,11 +83,12 @@ class Database {
 	    SensorWarmwasserBereitung = 110,
 	    SensorWarmwasserTempOK = 114,
 	    SensorZirkulation = 107,
+	    SensorZirkulationTagbetrieb = 124,
 	    SensorWWVorrang = 115,
 	    SensorWWTagbetrieb = 112,
 	    SensorSommerbetrieb = 113,
 	    /* not valid for DB */
-	    BooleanSensorLast = 124
+	    BooleanSensorLast = 125
 	} BooleanSensors;
 
 	typedef enum {

@@ -17,6 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#define VERSIONSTR "ems-collectord V0.9 beta1"
+
 #ifndef __OPTIONS_H__
 #define __OPTIONS_H__
 
@@ -76,6 +78,9 @@ class Options
 	static bool daemonize() {
 	    return m_daemonize;
 	}
+	static bool enablecli() {
+	    return m_enablecli;
+	}
 	static const std::string& pidFilePath() {
 	    return m_pidFilePath;
 	}
@@ -118,6 +123,7 @@ class Options
 	static unsigned int m_rateLimit;
 	static std::string m_pidFilePath;
 	static bool m_daemonize;
+	static bool m_enablecli;
 	static std::string m_dbPath;
 	static std::string m_dbUser;
 	static std::string m_dbPass;

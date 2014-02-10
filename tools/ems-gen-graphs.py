@@ -7,9 +7,9 @@ import subprocess
 import sys
 import time
 
-mysql_socket_path = "/var/run/mysqld/mysqld.sock"
-mysql_user = "emsdata"
-mysql_password = "emsdata"
+mysql_socket_path = "/var/run/mysql/mysql.sock"
+mysql_user = "ems"
+mysql_password = "buderusems"
 mysql_db_name = "ems_data"
 
 @contextlib.contextmanager
