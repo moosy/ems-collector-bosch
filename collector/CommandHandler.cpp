@@ -2,6 +2,8 @@
  * Buderus EMS data collector
  *
  * Copyright (C) 2011 Danny Baumann <dannybaumann@web.de>
+ * various additional features 
+ * (c) 2014 by Michael Moosbauer <schule@michael-moosbauer.de>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
