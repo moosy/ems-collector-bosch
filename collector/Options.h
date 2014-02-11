@@ -19,7 +19,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define VERSIONSTR "ems-collectord V0.9 beta1"
+#define VERSIONSTR "ems-collectord V0.9 beta2"
 
 #ifndef __OPTIONS_H__
 #define __OPTIONS_H__

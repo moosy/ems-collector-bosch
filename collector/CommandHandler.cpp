@@ -1538,6 +1538,7 @@ CommandConnection::handlePcMessage(const EmsMessage& message)
             debug << tmp.str();
           }
           
+          printBool(2, 0, "Warmwasser am Kessel aktiviert", data);
           printNumber(3, 1, 1, "Warmwassertemperatur Tag", "째C", data);
           printNumber(9, 1, 1, "Solltemperatur Thermische Desinfektion", "째C", data);
           
@@ -1666,6 +1667,7 @@ CommandConnection::handlePcMessage(const EmsMessage& message)
 
         case  0x16: /*UBA-Status*/
         
+          printBool(1, 0, "Heizfunktion am Kessel aktiviert", data);
           printNumber(2, 1, 1, "Temperatureinstellung Kessel", "째C", data);
           printNumber(3, 1, 1, "max. Kesselleistung", "�%", data);
           printNumber(4, 1, 1, "min. Kesselleistung", "�%", data);
