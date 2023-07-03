@@ -167,7 +167,8 @@ EmsMessage::EmsMessage(uint8_t dest, uint8_t type, uint8_t offset,
     m_valueHandler(),
     m_data(data),
     m_source(EmsProto::addressPC),
-    m_dest(dest | (expectResponse ? 0x80 : 0)),
+//    m_dest(dest | 0x80), 
+    m_dest(expectResponse ? dest | 0x80 : dest & 0x7f),
     m_type(type),
     m_offset(offset)
 {
@@ -226,12 +227,34 @@ EmsMessage::handle()
 	return;
     }
 
-    if (m_dest & 0x80) {
-	/* if highest bit of dest is set, it's a polling request -> ignore */
-	return;
-    }
+
+//    if ((m_dest & 0x80)==0) {
+//     /* if highest bit of dest is NOT set, it's a polling request -> ignore */
+//      return;
+//    }
 
     switch (m_source) {
+	case EmsProto::addressUBA2:
+	    /* BOSCH UBA message */
+	    switch (m_type) {
+		case 0xd1: parseUBA2OutdoorMessage(); handled = true; break;
+                case 0xe4: parseUBA2MonitorMessage(); handled = true; break;
+                case 0xe5: parseUBA2MonitorMessage2(); handled = true; break;
+                case 0xe9: parseUBA2WWMonitorMessage(); handled = true; break;
+                case 0x2d: parseUBA2WWMonitorMessage2(); handled = true; break;
+		case 0xbf: parseUBA2ErrorMessage(); handled = true; break;
+
+	    }
+	    break;
+	case EmsProto::addressUI800:
+	    /* BOSCH UI controller message */
+	    switch (m_type) {
+		case 0x06: parseRCTimeMessage(); handled = true; break;
+		case 0xbf: parseUI800ErrorMessage(); handled = true; break;
+
+	    }
+	    break;
+	    
 	case EmsProto::addressUBA:
 	    /* UBA message */
 	    switch (m_type) {
@@ -365,6 +388,116 @@ EmsMessage::parseBool(size_t offset, uint8_t bit,
     }
 }
 
+
+
+void
+EmsMessage::parseUBA2ErrorMessage()
+{
+  parseUI800ErrorMessage();
+
+}
+
+
+void
+EmsMessage::parseUI800ErrorMessage()
+{
+    bool errorsfound = false;
+    
+    for (int i=0; i<3; i++){
+
+        if (canAccess(5+i*7, 3)) {
+            std::ostringstream ss;
+            ss <<  m_data[5+i*7] <<  m_data[6+i*7] << m_data[7+i*7];
+            if ( (m_data[5+i*7] |  m_data[6+i*7] | m_data[7+i*7]) > 0) {
+                m_valueHandler(EmsValue(EmsValue::StoerungsCode, EmsValue::None, ss.str()));
+                errorsfound = true;
+            }
+        }
+
+        if (canAccess(8+i*7, 2)) {
+            std::ostringstream ss;
+            ss << std::dec << (m_data[8+i*7] << 8 | m_data[9+i*7]);
+            if ( (m_data[8+i*7] |  m_data[9+i*7] ) > 0) {
+                m_valueHandler(EmsValue(EmsValue::StoerungsNummer, EmsValue::None, ss.str()));
+                errorsfound = true;
+            }
+        }
+    }
+    
+    if (!errorsfound) {
+                m_valueHandler(EmsValue(EmsValue::StoerungsCode, EmsValue::None, "OK" ));
+                m_valueHandler(EmsValue(EmsValue::StoerungsNummer, EmsValue::None, "0" ));
+
+    }
+    
+
+}
+
+
+
+void
+EmsMessage::parseUBA2MonitorMessage()
+{
+    parseNumeric(6, 1, 1, EmsValue::SollTemp, EmsValue::Kessel);
+    parseTemperature(7, EmsValue::IstTemp, EmsValue::Kessel);
+    parseTemperature(13, EmsValue::IstTemp, EmsValue::Waermetauscher);
+    parseTemperature(17, EmsValue::IstTemp, EmsValue::Ruecklauf);
+    parseNumeric(19, 2, 10, EmsValue::Flammenstrom, EmsValue::None);
+    parseNumeric(21, 1, 10, EmsValue::Systemdruck, EmsValue::None, false);
+    parseInteger(40, 1, EmsValue::IstModulation, EmsValue::Brenner);
+    parseInteger(41, 1, EmsValue::SollModulation, EmsValue::Brenner);
+
+
+
+
+    if (canAccess(4, 2)) {
+	std::ostringstream ss;
+	ss << std::dec << (m_data[4] << 8 | m_data[5]);
+	m_valueHandler(EmsValue(EmsValue::FehlerCode, EmsValue::None, ss.str()));
+        m_valueHandler(EmsValue(EmsValue::ServiceCode, EmsValue::None, "--"));
+	
+    }
+
+    if (canAccess(19, 2)) {
+	int bakt = ( (m_data[19] << 8 | m_data[20]) > 0 );
+//
+        m_valueHandler(EmsValue(EmsValue::FlammeAktiv, EmsValue::None, bakt, 0 ));
+	
+    }
+}
+
+void
+EmsMessage::parseUBA2MonitorMessage2()
+{
+    parseInteger(25, 1, EmsValue::IstModulation, EmsValue::KesselPumpe);
+
+    parseBool(26, 5, EmsValue::DreiWegeVentilAufWW, EmsValue::None); // 100=WW, 50=Mix, Bit5 = >0
+    parseBool(2, 7, EmsValue::ZirkulationAktiv, EmsValue::None);
+
+}
+
+void 
+EmsMessage::parseUBA2OutdoorMessage()
+{        
+    parseTemperature(0, EmsValue::IstTemp, EmsValue::Aussen);
+}
+        
+
+void
+EmsMessage::parseUBA2WWMonitorMessage()
+{
+    parseNumeric(0, 1, 1, EmsValue::SollTemp, EmsValue::WW);
+    parseTemperature(1, EmsValue::IstTemp, EmsValue::WW);
+
+}
+
+void
+EmsMessage::parseUBA2WWMonitorMessage2()
+{
+}
+
+
+
 void
 EmsMessage::parseUBAMonitorFastMessage()
 {
@@ -394,6 +527,8 @@ EmsMessage::parseUBAMonitorFastMessage()
 	m_valueHandler(EmsValue(EmsValue::FehlerCode, EmsValue::None, ss.str()));
     }
 }
+
+
 
 void
 EmsMessage::parseUBATotalUptimeMessage()
@@ -454,14 +589,6 @@ EmsMessage::parseUBAMonitorWWMessage()
     parseInteger(10, 3, EmsValue::WarmwasserbereitungsZeit, EmsValue::None);
     parseInteger(13, 3, EmsValue::WarmwasserBereitungen, EmsValue::None);
 
-    if (canAccess(7, 1)) {
-	// offset 7, bit 1: manual mode
-	bool manual = m_data[7 - m_offset] & (1 << 1);
-	// offset 7, bit 0: manually enabled
-	bool enabled = m_data[7 - m_offset] & (1 << 0);
-	uint8_t mode = manual ? (enabled ? 1 : 0) : 2;
-	m_valueHandler(EmsValue(EmsValue::Betriebsart, EmsValue::Zirkulation, mode));
-    }
 }
 
 void

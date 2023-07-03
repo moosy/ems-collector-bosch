@@ -32,7 +32,7 @@ class Database {
 	~Database();
 
     public:
-	bool connect(const std::string& server, const std::string& user, const std::string& password);
+	bool connect(const std::string& server, const std::string& user, const std::string& password,  const std::string& dbName);
 	void handleValue(const EmsValue& value);
 
     private:
@@ -99,8 +99,11 @@ class Database {
 	typedef enum {
 	    SensorServiceCode = 200,
 	    SensorFehlerCode = 201,
+	    SensorStoerungsCode = 202,
+	    SensorStoerungsNummer = 203,
+	    
 	    /* not valid for DB */
-	    StateSensorLast = 202
+	    StateSensorLast = 204
 	} StateSensors;
 
 	void addSensorValue(NumericSensors sensor, float value);
@@ -114,7 +117,6 @@ class Database {
 	bool executeQuery(mysqlpp::Query& query);
 
     private:
-	static const char *dbName;
 	static const char *numericTableName;
 	static const char *booleanTableName;
 	static const char *stateTableName;

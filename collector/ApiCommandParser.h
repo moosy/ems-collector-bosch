@@ -44,6 +44,7 @@ class ApiCommandParser : public boost::noncopyable
 	CommandResult parse(std::istream& request);
 	boost::tribool onIncomingMessage(const EmsMessage& message);
 	bool onTimeout();
+	void onNoResponse();
 
     public:
 	static std::string buildRecordResponse(const EmsProto::ErrorRecord *record);

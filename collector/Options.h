@@ -100,6 +100,9 @@ class Options
 	static const std::string& databasePassword() {
 	    return m_dbPass;
 	}
+	static const std::string& databaseName() {
+	    return m_dbName;
+	}
 	static unsigned int commandPort() {
 	    return m_commandPort;
 	}
@@ -141,6 +144,7 @@ class Options
 	static std::string m_dbPath;
 	static std::string m_dbUser;
 	static std::string m_dbPass;
+	static std::string m_dbName;
 	static unsigned int m_commandPort;
 	static unsigned int m_dataPort;
 	static RoomControllerType m_rcType;

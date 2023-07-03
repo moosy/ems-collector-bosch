@@ -34,6 +34,7 @@ bool Options::m_daemonize = true;
 std::string Options::m_dbPath;
 std::string Options::m_dbUser;
 std::string Options::m_dbPass;
+std::string Options::m_dbName;
 unsigned int Options::m_commandPort = 0;
 unsigned int Options::m_dataPort = 0;
 Options::RoomControllerType Options::m_rcType = Options::RCUnknown;
@@ -90,7 +91,9 @@ Options::parse(int argc, char *argv[])
 	("db-user,u", bpo::value<std::string>(&m_dbUser)->composing(),
 	 "Database user name")
 	("db-pass,p", bpo::value<std::string>(&m_dbPass)->composing(),
-	 "Database password");
+	 "Database password")
+	("db-name,n", bpo::value<std::string>(&m_dbName)->composing(),
+	 "Database name");
 #endif
 
     bpo::options_description tcp("TCP options");

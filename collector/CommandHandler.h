@@ -57,6 +57,7 @@ class CommandConnection : public boost::enable_shared_from_this<CommandConnectio
 	}
 	void onIncomingMessage(const EmsMessage& message);
 	void onTimeout();
+	void onNoResponse();
 
     private:
 	void handleRequest(const boost::system::error_code& error);
@@ -72,6 +73,9 @@ class CommandConnection : public boost::enable_shared_from_this<CommandConnectio
 		}
 		void onTimeout() {
 		    m_connection->onTimeout();
+		}
+		void onNoResponse() {
+		    m_connection->onNoResponse();
 		}
 
 	    private:

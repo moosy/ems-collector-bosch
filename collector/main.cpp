@@ -111,7 +111,8 @@ int main(int argc, char *argv[])
 	Database db;
 
 	if (dbPath != "none") {
-	    if (!db.connect(dbPath, Options::databaseUser(), Options::databasePassword())) {
+	
+            if (!db.connect(dbPath, Options::databaseUser(), Options::databasePassword(), Options::databaseName())) {
 		std::cerr << "Could not connect to database" << std::endl;
 		return 1;
 	    }

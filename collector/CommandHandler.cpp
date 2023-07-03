@@ -147,6 +147,15 @@ CommandConnection::onIncomingMessage(const EmsMessage& message)
 }
 
 void
+CommandConnection::onNoResponse()
+{
+        respond("WAIT");
+        m_parser.onNoResponse();
+        respond("WRITTEN");
+}
+
+
+void
 CommandConnection::onTimeout()
 {
     if (m_parser.onTimeout()) {

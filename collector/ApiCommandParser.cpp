@@ -98,7 +98,7 @@ ApiCommandParser::parse(std::istream& request)
 	return handleCacheCommand(request);
     } else if (category == "getversion") {
 	output("collector version: " API_VERSION);
-	startRequest(EmsProto::addressUBA, 0x02, 0, 3);
+	startRequest(EmsProto::addressUBA2, 0x02, 0, 3);
 	return Ok;
     }
 
@@ -215,7 +215,7 @@ ApiCommandParser::handleRcCommand(std::istream& request)
 	    case boost::date_time::Sunday: record.dayOfWeek = 6; break;
 	}
 
-	sendCommand(EmsProto::addressRC3x, 0x06, 0, (uint8_t *) &record, sizeof(record));
+	sendCommand(EmsProto::addressUI800, 0x06, 0, (uint8_t *) &record, sizeof(record));
 	return Ok;
     }
 
@@ -411,7 +411,12 @@ ApiCommandParser::handleRawCommand(std::istream& request)
 	    return InvalidArgs;
 	}
 
+
 	sendCommand(target, type, offset, &value, 1);
+//        uint8_t  v2[3] = {1,245 ,0};
+//        v2[2] = value;
+// 	sendCommand(target, type, offset, v2, 3);
+	
 	return Ok;
     }
 
@@ -1028,12 +1033,17 @@ ApiCommandParser::handleZirkPumpCommand(std::istream& request)
     return InvalidCmd;
 }
 
+
+
+
 boost::tribool
 ApiCommandParser::onIncomingMessage(const EmsMessage& message)
 {
+    
     if (!m_activeRequest) {
 	return boost::indeterminate;
     }
+
 
     const std::vector<uint8_t>& data = message.getData();
     uint8_t source = message.getSource();
@@ -1045,6 +1055,9 @@ ApiCommandParser::onIncomingMessage(const EmsMessage& message)
 	return offset != 0x04;
     }
 
+
+
+
     if (source != m_requestDestination ||
 	    type != m_requestType      ||
 	    offset != (m_requestResponse.size() + m_requestOffset)) {
@@ -1052,12 +1065,17 @@ ApiCommandParser::onIncomingMessage(const EmsMessage& message)
 	return boost::indeterminate;
     }
 
+
+
     if (data.empty()) {
 	// no more data is available
 	m_requestLength = m_requestResponse.size();
     } else {
 	m_requestResponse.insert(m_requestResponse.end(), data.begin(), data.end());
     }
+
+
+
 
     boost::tribool result;
 
@@ -1091,9 +1109,11 @@ ApiCommandParser::handleResponse()
 		uint8_t source;
 		const char *name;
 	    } SOURCES[] = {
-		{ EmsProto::addressUBA, "UBA" },
-		{ EmsProto::addressBC10, "BC10" },
-		{ EmsProto::addressRC3x, "RC3x" }
+//		{ EmsProto::addressUBA, "UBA" },
+//		{ EmsProto::addressBC10, "BC10" },
+//		{ EmsProto::addressRC3x, "RC3x" },
+		{ EmsProto::addressUBA2, "UBA2" },
+		{ EmsProto::addressUI800, "UI800" }
 	    };
 	    static const size_t SOURCECOUNT = sizeof(SOURCES) / sizeof(SOURCES[0]);
 
@@ -1278,6 +1298,14 @@ ApiCommandParser::onTimeout()
     return false;
 }
 
+void
+ApiCommandParser::onNoResponse()
+{
+    m_activeRequest.reset();
+}
+
+
+
 std::string
 ApiCommandParser::buildRecordResponse(const EmsProto::ErrorRecord *record)
 {
@@ -1443,6 +1471,7 @@ ApiCommandParser::startRequest(uint8_t dest, uint8_t type, size_t offset,
 bool
 ApiCommandParser::continueRequest()
 {
+
     size_t alreadyReceived = m_requestResponse.size();
 
     if (alreadyReceived >= m_requestLength) {
@@ -1460,12 +1489,11 @@ void
 ApiCommandParser::sendCommand(uint8_t dest, uint8_t type, uint8_t offset,
 			       const uint8_t *data, size_t count,
 			       bool expectResponse)
-{
+{   
     std::vector<uint8_t> sendData(data, data + count);
 
     m_retriesLeft = MaxRequestRetries;
     m_activeRequest.reset(new EmsMessage(dest, type, offset, sendData, expectResponse));
-
     sendActiveRequest();
 }
 

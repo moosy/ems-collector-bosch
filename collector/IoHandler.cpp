@@ -93,7 +93,10 @@ IoHandler::readComplete(const boost::system::error_code& error,
 		if (m_checkSum == dataByte) {
 		    EmsMessage message(m_valueCb, m_cacheCb, m_data);
 		    message.handle();
-		    if (message.getDestination() == EmsProto::addressPC) {
+
+
+		    if ((message.getDestination() | 0x80) == EmsProto::addressPC) {
+                        
 			onPcMessageReceived(message);
 		    }
 		}

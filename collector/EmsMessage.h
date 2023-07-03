@@ -31,7 +31,7 @@ class EmsProto {
     public:
 	static const uint8_t addressUBA  = 0x08;
 	static const uint8_t addressBC10 = 0x09;
-	static const uint8_t addressPC   = 0x0b;
+	static const uint8_t addressPC   = 0x8b;
 	static const uint8_t addressRC3x = 0x10;
 	static const uint8_t addressWM10 = 0x11;
 	static const uint8_t addressRC2xStandalone = 0x17;
@@ -44,6 +44,9 @@ class EmsProto {
 	static const uint8_t addressMM10HK3 = 0x22;
 	static const uint8_t addressMM10HK4 = 0x23;
 	static const uint8_t addressSM10 = 0x30;
+	static const uint8_t addressUBA2 = 0x88;
+	static const uint8_t addressUI800 = 0x90;
+	
 
     public:
 #pragma pack(push,1)
@@ -213,6 +216,8 @@ class EmsValue {
 	    /* state */
 	    ServiceCode,
 	    FehlerCode,
+	    StoerungsCode,
+	    StoerungsNummer,
 	};
 
 	enum SubType {
@@ -325,7 +330,7 @@ class EmsMessage
 	    return m_source;
 	}
 	uint8_t getDestination() const {
-	    return m_dest & 0x7f;
+	    return m_dest; 
 	}
 	uint8_t getType() const {
 	    return m_type;
@@ -340,6 +345,15 @@ class EmsMessage
 
     private:
 	void parseUBATotalUptimeMessage();
+	void parseUBA2MonitorMessage();
+	void parseUBA2MonitorMessage2();
+        void parseUBA2OutdoorMessage(); 
+        void parseUBA2WWMonitorMessage();
+        void parseUBA2WWMonitorMessage2();
+        void parseUBA2ErrorMessage();
+
+        void parseUI800ErrorMessage();
+
 	void parseUBAMonitorFastMessage();
 	void parseUBAMonitorSlowMessage();
 	void parseUBAMonitorWWMessage();

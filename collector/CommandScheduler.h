@@ -20,6 +20,7 @@
 #ifndef __COMMANDSCHEDULER_H__
 #define __COMMANDSCHEDULER_H__
 
+#include <map>
 #include <list>
 #include <boost/asio.hpp>
 #include "EmsMessage.h"
@@ -30,6 +31,7 @@ class EmsCommandClient
     public:
 	virtual void onIncomingMessage(const EmsMessage& message) = 0;
 	virtual void onTimeout() = 0;
+	virtual void onNoResponse() = 0;
 };
 
 class EmsCommandSender : public boost::noncopyable
@@ -55,7 +57,7 @@ class EmsCommandSender : public boost::noncopyable
 
     private:
 	void continueWithNextRequest();
-	void scheduleResponseTimeout();
+	void scheduleResponseTimeout(bool fakeAnswer);
 	void sendMessage(const MessagePtr& message);
 	void doSendMessage(const EmsMessage& message);
 

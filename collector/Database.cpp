@@ -24,7 +24,6 @@
 #include "Database.h"
 #include "Options.h"
 
-const char * Database::dbName = "ems_data";
 const char * Database::numericTableName = "numeric_data";
 const char * Database::booleanTableName = "boolean_data";
 const char * Database::stateTableName = "state_data";
@@ -58,7 +57,7 @@ Database::~Database()
 }
 
 bool
-Database::connect(const std::string& server, const std::string& user, const std::string& password)
+Database::connect(const std::string& server, const std::string& user, const std::string& password, const std::string& dbName)
 {
     bool success = false;
 
@@ -280,6 +279,8 @@ Database::createSensorRows()
     /* State sensors */
     query.execute(SensorServiceCode, sensorTypeState, "Servicecode");
     query.execute(SensorFehlerCode, sensorTypeState, "Fehlercode");
+    query.execute(SensorStoerungsCode, sensorTypeState, "Stoerungscode");
+    query.execute(SensorStoerungsNummer, sensorTypeState, "Stoerungsnummer");
 }
 
 bool
@@ -398,7 +399,9 @@ Database::handleValue(const EmsValue& value)
 	StateSensors sensor;
     } STATEMAPPING[] = {
 	{ EmsValue::FehlerCode, SensorFehlerCode },
-	{ EmsValue::ServiceCode, SensorServiceCode }
+	{ EmsValue::ServiceCode, SensorServiceCode },
+	{ EmsValue::StoerungsCode, SensorStoerungsCode },
+	{ EmsValue::StoerungsNummer, SensorStoerungsNummer },
     };
 
     if (!value.isValid()) {

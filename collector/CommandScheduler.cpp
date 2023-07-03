@@ -19,9 +19,11 @@
 
 #include <boost/bind/bind.hpp>
 #include "CommandScheduler.h"
+#include "Options.h"
 
 void
 EmsCommandSender::handlePcMessage(const EmsMessage& message)
+
 {
     m_lastCommTimes[message.getSource()] = boost::posix_time::microsec_clock::universal_time();
     m_responseTimeout.cancel();
@@ -42,17 +44,40 @@ EmsCommandSender::sendMessage(ClientPtr& client, MessagePtr& message)
 }
 
 void
-EmsCommandSender::scheduleResponseTimeout()
+EmsCommandSender::scheduleResponseTimeout(bool fakeAnswer)
 {
-    m_responseTimeout.expires_from_now(boost::posix_time::milliseconds(RequestTimeout));
-    m_responseTimeout.async_wait([this] (const boost::system::error_code& error) {
-	if (error != boost::asio::error::operation_aborted) {
-	    if (m_currentClient) {
-		m_currentClient->onTimeout();
-	    }
-	    continueWithNextRequest();
-	}
-    });
+    if (fakeAnswer){
+        m_responseTimeout.expires_from_now(boost::posix_time::milliseconds(200));
+    
+        m_responseTimeout.async_wait([this] (const boost::system::error_code& error) {
+            if (error != boost::asio::error::operation_aborted) {
+                if (m_currentClient) {
+
+                    std::vector<uint8_t> fakeData(0x00, 0x01);
+                    EmsMessage fake(0x0b, 0xff, 0x01, fakeData, false);
+                    handlePcMessage(fake);	        
+                    
+                }
+                continueWithNextRequest();
+            }
+        });
+        
+    } else {
+
+        m_responseTimeout.expires_from_now(boost::posix_time::milliseconds(RequestTimeout));
+    
+        m_responseTimeout.async_wait([this] (const boost::system::error_code& error) {
+            if (error != boost::asio::error::operation_aborted) {
+                if (m_currentClient) {
+
+                    m_currentClient->onTimeout();  
+
+                }
+                continueWithNextRequest();
+            }
+        });
+        
+    }
 }
 
 void
@@ -79,8 +104,11 @@ EmsCommandSender::sendMessage(const MessagePtr& message)
 void
 EmsCommandSender::doSendMessage(const EmsMessage& message)
 {
+    bool fakeAnswer = ((message.getDestination() & 0x80) == 0);
+
     sendMessageImpl(message);
-    scheduleResponseTimeout();
+    scheduleResponseTimeout(fakeAnswer);
+    
     m_lastCommTimes[message.getDestination()] = boost::posix_time::microsec_clock::universal_time();
 }
 
@@ -93,6 +121,7 @@ EmsCommandSender::continueWithNextRequest()
     }
     auto& item = m_pending.front();
     m_currentClient = item.first;
+
     sendMessage(item.second);
     m_pending.pop_front();
 }
