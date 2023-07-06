@@ -29,23 +29,11 @@
 
 class EmsProto {
     public:
-	static const uint8_t addressUBA  = 0x08;
-	static const uint8_t addressBC10 = 0x09;
-	static const uint8_t addressPC   = 0x8b;
-	static const uint8_t addressRC3x = 0x10;
-	static const uint8_t addressWM10 = 0x11;
-	static const uint8_t addressRC2xStandalone = 0x17;
-	static const uint8_t addressRC2xHK1 = 0x18;
-	static const uint8_t addressRC2xHK2 = 0x19;
-	static const uint8_t addressRC2xHK3 = 0x1a;
-	static const uint8_t addressRC2xHK4 = 0x1b;
-	static const uint8_t addressMM10HK1 = 0x20;
-	static const uint8_t addressMM10HK2 = 0x21;
-	static const uint8_t addressMM10HK3 = 0x22;
-	static const uint8_t addressMM10HK4 = 0x23;
-	static const uint8_t addressSM10 = 0x30;
-	static const uint8_t addressUBA2 = 0x88;
-	static const uint8_t addressUI800 = 0x90;
+	static const uint8_t addressUBA2        = 0x88;
+	static const uint8_t addressPC          = 0x8b;
+	static const uint8_t addressUI800       = 0x90;
+	static const uint8_t addressRH800HK1    = 0xb8;
+	static const uint8_t addressConnectKey  = 0xc8;
 	
 
     public:
@@ -355,31 +343,8 @@ class EmsMessage
 
         void parseUI800ErrorMessage();
 
-	void parseUBAMonitorFastMessage();
-	void parseUBAMonitorSlowMessage();
-	void parseUBAMonitorWWMessage();
-	void parseUBAMaintenanceSettingsMessage();
-	void parseUBAMaintenanceStatusMessage();
-	void parseUBAParameterWWMessage();
-	void parseUBAUnknown1Message();
-	void parseUBAErrorMessage();
-	void parseUBAParametersMessage();
-
 	void parseRCTimeMessage();
-	void parseRCOutdoorTempMessage();
-	void parseRCSystemParameterMessage();
-	void parseRCWWOpmodeMessage();
-	void parseRCHKMonitorMessage(EmsValue::SubType subType);
-	void parseRCHKOpmodeMessage(EmsValue::SubType subType);
-	void parseRCHKScheduleMessage(EmsValue::SubType subType);
-	void parseRC20StatusMessage(EmsValue::SubType subType);
 
-	void parseWMTemp1Message();
-	void parseWMTemp2Message();
-
-	void parseMMTempMessage(EmsValue::SubType subType);
-
-	void parseSolarMonitorMessage();
 
     private:
 	void parseNumeric(size_t offset, size_t size, int divider,
@@ -401,15 +366,15 @@ class EmsMessage
 	    return offset >= m_offset && offset + size <= m_offset + m_data.size();
 	}
 	EmsValue::SubType determineHKFromAddress(uint8_t address) {
-	    if (address == EmsProto::addressRC2xHK2 || address == EmsProto::addressMM10HK2) {
-		return EmsValue::HK2;
-	    }
-	    if (address == EmsProto::addressRC2xHK3 || address == EmsProto::addressMM10HK4) {
-		return EmsValue::HK3;
-	    }
-	    if (address == EmsProto::addressRC2xHK4 || address == EmsProto::addressMM10HK4) {
-		return EmsValue::HK4;
-	    }
+//	    if (address == EmsProto::addressRC2xHK2 || address == EmsProto::addressMM10HK2) {
+//		return EmsValue::HK2;
+//	    }
+//	    if (address == EmsProto::addressRC2xHK3 || address == EmsProto::addressMM10HK4) {
+//		return EmsValue::HK3;
+//	    }
+//	    if (address == EmsProto::addressRC2xHK4 || address == EmsProto::addressMM10HK4) {
+//		return EmsValue::HK4;
+//	    }
 	    return EmsValue::HK1;
 	}
 
