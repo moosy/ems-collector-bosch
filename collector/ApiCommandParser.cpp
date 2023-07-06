@@ -302,9 +302,63 @@ ApiCommandParser::handleWwCommand(std::istream& request)
 
     if (cmd == "help") {
 	output("Available subcommands:\n"
+               "comforttemp <temp> \n"
+               "reducedtemp <temp> \n"
+               "extratemp <temp> \n"
+               "extra15mins <extra duration quarterly hours> \n"
+               "extrastart \n"
+               "extrastop \n"               
+               "requestdata \n"
 		"OK");
 	return Ok;
+
+
+    } else if (cmd == "requestdata") {
+        startRequest(EmsProto::addressUBA2, 0xea, 0, 25, true, true);
+        return Ok;
+
+    } else if (cmd == "comforttemp") {
+        uint8_t temperature;
+        if (!parseIntParameter(request, temperature, 80) || temperature < 30) {
+            return InvalidArgs;
+        }
+        sendCommand(EmsProto::addressUBA2, 0xea, 6, &temperature, 1);
+        return Ok;
+
+    } else if (cmd == "reducedtemp") {
+        uint8_t temperature;
+        if (!parseIntParameter(request, temperature, 80) || temperature < 30) {
+            return InvalidArgs;
+        }
+        sendCommand(EmsProto::addressUBA2, 0xea, 18, &temperature, 1);
+        return Ok;
+    } else if (cmd == "extratemp") {
+        uint8_t temperature;
+        if (!parseIntParameter(request, temperature, 80) || temperature < 30) {
+            return InvalidArgs;
+        }
+        sendCommand(EmsProto::addressUBA2, 0xea, 16, &temperature, 1);
+        return Ok;
+
+    } else if (cmd == "extra15mins") {
+        uint8_t duration;
+        if (!parseIntParameter(request, duration, 16)) {
+            return InvalidArgs;
+        }
+        sendCommand(EmsProto::addressUI800, 0x01f5, 10, &duration, 1);
+        return Ok;
+    } else if (cmd == "extrastart") {
+        uint8_t value = 0xff;
+        sendCommand(EmsProto::addressUI800, 0x01f5, 11, &value, 1);
+        return Ok;
+    } else if (cmd == "extrastop") {
+        uint8_t value = 0x00;
+        sendCommand(EmsProto::addressUI800, 0x01f5, 11, &value, 1);
+        return Ok;
+
+
     }
+    
 
     return InvalidCmd;
 }
@@ -385,7 +439,9 @@ ApiCommandParser::handleResponse()
 		const char *name;
 	    } SOURCES[] = {
 		{ EmsProto::addressUBA2, "UBA2" },
-		{ EmsProto::addressUI800, "UI800" }
+		{ EmsProto::addressUI800, "UI800" },
+		{ EmsProto::addressRH800, "RH800" }
+
 	    };
 	    static const size_t SOURCECOUNT = sizeof(SOURCES) / sizeof(SOURCES[0]);
 

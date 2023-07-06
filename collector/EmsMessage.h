@@ -32,7 +32,7 @@ class EmsProto {
 	static const uint8_t addressUBA2        = 0x88;
 	static const uint8_t addressPC          = 0x8b;
 	static const uint8_t addressUI800       = 0x90;
-	static const uint8_t addressRH800HK1    = 0xb8;
+	static const uint8_t addressRH800       = 0xb8;
 	static const uint8_t addressConnectKey  = 0xc8;
 	
 
@@ -101,6 +101,9 @@ class EmsValue {
 	    SetTemp, /* Kessel */
 	    MinTemp, /* HKx, Aussentemp. der Region */
 	    MaxTemp, /* HKx, WW */
+	    KomfortTemp,
+	    ReduzierteTemp,
+	    ExtraTemp,
 	    TagTemp,
 	    NachtTemp,
 	    UrlaubTemp,
@@ -339,6 +342,8 @@ class EmsMessage
         void parseUBA2OutdoorMessage(); 
         void parseUBA2WWMonitorMessage();
         void parseUBA2WWMonitorMessage2();
+        void parseUBA2WWParameterMessage();
+
         void parseUBA2ErrorMessage();
 
         void parseUI800ErrorMessage();

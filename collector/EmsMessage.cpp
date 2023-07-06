@@ -297,6 +297,7 @@ EmsMessage::handle()
                 case 0xe4: parseUBA2MonitorMessage(); handled = true; break;
                 case 0xe5: parseUBA2MonitorMessage2(); handled = true; break;
                 case 0xe9: parseUBA2WWMonitorMessage(); handled = true; break;
+                case 0xea: parseUBA2WWParameterMessage(); handled = true; break;
                 case 0x2d: parseUBA2WWMonitorMessage2(); handled = true; break;
 		case 0xbf: parseUBA2ErrorMessage(); handled = true; break;
 
@@ -460,6 +461,16 @@ EmsMessage::parseUBA2WWMonitorMessage()
 void
 EmsMessage::parseUBA2WWMonitorMessage2()
 {
+}
+
+void
+EmsMessage::parseUBA2WWParameterMessage()
+{
+
+    parseNumeric(6, 1, 1, EmsValue::KomfortTemp, EmsValue::WW);
+    parseNumeric(16, 1, 1, EmsValue::ExtraTemp, EmsValue::WW);
+    parseNumeric(18, 1, 1, EmsValue::ReduzierteTemp, EmsValue::WW);
+
 }
 
 
