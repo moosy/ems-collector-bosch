@@ -2,15 +2,20 @@ ems-collector BOSCH EMS 2 version
 =================================
 
 ATTENTION: This version has implemented changes to the protocol
-which makes it INCOMPATIBLE with older Buderus EMS or EMS plus systems.
+which makes it INCOMPATIBLE with older Buderus EMS or EMS plus systems!
+
 It was written and adapted to work with a new Bosch Condens 9800i heater
 with a UI800 control panel.
 
-IT NEED A PATCHED VERSION OF DANNY BAUMANN'S ETHERSEX EMS PATCH, TOO!
-The EMS dialect used by Boch flips the meaning of the highest address bit!
+IT NEEDS A PATCHED VERSION OF DANNY BAUMANN'S ETHERSEX EMS PATCHES, TOO!
+
+The EMS dialect used by Bosch flips the meaning of the highest address bit!
+
 old (Buderus): bit 7 set == polling / sending, bit 7 not set == answer / writing
+
 new (Bosch): bit 7 set == answer / writing, bit 7 not set == polling / sending
-That means that all the addresses have now values greater then 0x80!
+
+That means that all the addresses have now values greater than 0x80!
 
 
 
