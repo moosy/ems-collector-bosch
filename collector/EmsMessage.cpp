@@ -145,31 +145,47 @@ EmsMessage::EmsMessage(ValueHandler& valueHandler, CacheAccessor cacheAccessor,
 		       const std::vector<uint8_t>& data) :
     m_valueHandler(valueHandler),
     m_cacheAccessor(cacheAccessor),
-    m_data(data)
+    m_data(data),
+    m_source(0),
+    m_dest(0),
+    m_type(0),
+    m_extType(0),
+    m_offset(0)
 {
-    if (m_data.size() >= 4) {
-	m_source = m_data[0];
-	m_dest = m_data[1];
-	m_type = m_data[2];
-	m_offset = m_data[3];
-	m_data.erase(m_data.begin(), m_data.begin() + 4);
-    } else {
-	m_source = 0;
-	m_dest = 0;
-	m_type = 0;
-	m_offset = 0;
+    if (m_data.size() < 4) {
+	return;
+    }
+
+    bool isRead = ((m_data[1] & 0x80) == 0);
+    bool isPlus = m_data[2] >= 0xf0 && m_data.size() >= (isRead ? 7 : 6);
+
+    m_source = m_data[0];
+    m_dest = m_data[1];
+    m_type = m_data[2];
+    m_offset = m_data[3];
+    m_data.erase(m_data.begin(), m_data.begin() + 4);
+
+    if (isPlus) {
+	size_t start = isRead ? 0 : 1;
+	m_extType = (m_data[start] << 8) | m_data[start + 1];
+	m_data.erase(m_data.begin() + start, m_data.begin() + start + 2);
+
+
     }
 }
 
-EmsMessage::EmsMessage(uint8_t dest, uint8_t type, uint8_t offset,
+EmsMessage::EmsMessage(uint8_t dest, uint16_t type, uint8_t offset,
 		       const std::vector<uint8_t>& data,
 		       bool expectResponse) :
     m_valueHandler(),
     m_data(data),
     m_source(EmsProto::addressPC),
-//    m_dest(dest | 0x80), 
     m_dest(expectResponse ? dest | 0x80 : dest & 0x7f),
-    m_type(type),
+
+    m_type(type < 0xf0 ? type : 0xff),
+    m_extType(type >= 0xf0 ? type : 0),
+
+
     m_offset(offset)
 {
 }
@@ -183,10 +199,50 @@ EmsMessage::getSendData(bool omitSenderAddress) const
     if (!omitSenderAddress) {
 	data.push_back(ourSenderAddress);
     }
+    
     data.push_back(m_dest);
+    
+    bool isRead = ((m_dest & 0x80) > 0);
+    
     data.push_back(m_type);
     data.push_back(m_offset);
-    data.insert(data.end(), m_data.begin(), m_data.end());
+    
+
+    if (m_type >= 0xf0) {  // EMS plus
+
+        if (isRead) { // read command, m_data[0] is the length
+        
+           data.push_back(m_data[0]);
+        }
+
+	data.push_back(m_extType >> 8);
+	data.push_back(m_extType & 0xff);
+	
+	if (!isRead){
+	
+           data.insert(data.end(), m_data.begin(), m_data.end());
+
+	}
+    } else { // EMS classic
+    
+
+      data.insert(data.end(), m_data.begin(), m_data.end());
+    }
+
+
+
+    DebugStream& debug = Options::messageDebug();
+
+
+    debug << "EmsMessage DATA COMPOSED: ";
+    for (size_t i = 0; i < data.size(); i++) {
+          debug << " 0x" << std::hex << std::setw(2)
+                  << std::setfill('0') << (unsigned int) data[i];
+    }
+    debug << std::endl;
+
+
+
 
     return data;
 }
@@ -203,11 +259,11 @@ EmsMessage::handle()
 
 	localtime_r(&now, &time);
 	boost::format f("MESSAGE[%02d.%02d.%04d %02d:%02d:%02d]: "
-			"source 0x%02x, dest 0x%02x, type 0x%02x, offset %d");
+			"source 0x%02x, dest 0x%02x, type 0x%04x, offset %d");
 	f  % time.tm_mday % (time.tm_mon + 1) % (time.tm_year + 1900);
 	f % time.tm_hour % time.tm_min % time.tm_sec;
 	f % (unsigned int) m_source % (unsigned int) m_dest;
-	f % (unsigned int) m_type % (unsigned int) m_offset;
+	f % getType() % (unsigned int) m_offset;
 
 	debug << f << ", data:";
 	for (size_t i = 0; i < m_data.size(); i++) {

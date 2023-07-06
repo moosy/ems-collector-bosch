@@ -393,9 +393,10 @@ ApiCommandParser::handleRawCommand(std::istream& request)
 		"OK");
 	return Ok;
     } else if (cmd == "read") {
-	uint8_t target, type, offset, len;
+        uint16_t type;
+	uint8_t target, offset, len;
 	if (!parseIntParameter(request, target, UCHAR_MAX)     ||
-		!parseIntParameter(request, type, UCHAR_MAX)   ||
+		!parseIntParameter(request, type, USHRT_MAX)   ||
 		!parseIntParameter(request, offset, UCHAR_MAX) ||
 		!parseIntParameter(request, len, UCHAR_MAX)) {
 	    return InvalidArgs;
@@ -403,9 +404,10 @@ ApiCommandParser::handleRawCommand(std::istream& request)
 	startRequest(target, type, offset, len, true, true);
 	return Ok;
     } else if (cmd == "write") {
-	uint8_t target, type, offset, value;
+        uint16_t type;
+	uint8_t target, offset, value;
 	if (!parseIntParameter(request, target, UCHAR_MAX)     ||
-		!parseIntParameter(request, type, UCHAR_MAX)   ||
+		!parseIntParameter(request, type, USHRT_MAX)   ||
 		!parseIntParameter(request, offset, UCHAR_MAX) ||
 		!parseIntParameter(request, value, UCHAR_MAX)) {
 	    return InvalidArgs;
@@ -459,7 +461,7 @@ ApiCommandParser::handleCacheCommand(std::istream& request)
 }
 
 ApiCommandParser::CommandResult
-ApiCommandParser::handleHkCommand(std::istream& request, uint8_t type)
+ApiCommandParser::handleHkCommand(std::istream& request, uint16_t type)
 {
     std::string cmd;
     request >> cmd;
@@ -720,7 +722,7 @@ ApiCommandParser::handleHkCommand(std::istream& request, uint8_t type)
 }
 
 ApiCommandParser::CommandResult
-ApiCommandParser::handleSingleByteValue(std::istream& request, uint8_t dest, uint8_t type,
+ApiCommandParser::handleSingleByteValue(std::istream& request, uint8_t dest, uint16_t type,
 					 uint8_t offset, int multiplier, int min, int max)
 {
     float value;
@@ -747,7 +749,7 @@ ApiCommandParser::handleSingleByteValue(std::istream& request, uint8_t dest, uin
 }
 
 ApiCommandParser::CommandResult
-ApiCommandParser::handleSetHolidayCommand(std::istream& request, uint8_t type, uint8_t offset)
+ApiCommandParser::handleSetHolidayCommand(std::istream& request, uint16_t type, uint8_t offset)
 {
     std::string beginString, endString;
     EmsProto::HolidayEntry entries[2];
@@ -1047,7 +1049,7 @@ ApiCommandParser::onIncomingMessage(const EmsMessage& message)
 
     const std::vector<uint8_t>& data = message.getData();
     uint8_t source = message.getSource();
-    uint8_t type = message.getType();
+    uint16_t type = message.getType();
     uint8_t offset = message.getOffset();
 
     if (type == 0xff) {
@@ -1298,13 +1300,6 @@ ApiCommandParser::onTimeout()
     return false;
 }
 
-void
-ApiCommandParser::onNoResponse()
-{
-    m_activeRequest.reset();
-}
-
-
 
 std::string
 ApiCommandParser::buildRecordResponse(const EmsProto::ErrorRecord *record)
@@ -1450,9 +1445,16 @@ ApiCommandParser::parseHolidayEntry(const std::string& string, EmsProto::Holiday
 }
 
 void
-ApiCommandParser::startRequest(uint8_t dest, uint8_t type, size_t offset,
+ApiCommandParser::startRequest(uint8_t dest, uint16_t type, size_t offset,
 			        size_t length, bool newRequest, bool raw)
 {
+    DebugStream& debug = Options::messageDebug();
+    debug << "STARTREQUEST: dest=";
+    debug << boost::format("0x%02x ") % (unsigned int) dest << " type=";
+    debug << boost::format("0x%04x ") % (unsigned int) type << " offset=";
+    debug << boost::format("%d ") % (unsigned int) offset << " \n";
+
+
     m_requestOffset = offset;
     m_requestLength = length;
     m_requestDestination = dest;
@@ -1486,19 +1488,29 @@ ApiCommandParser::continueRequest()
 }
 
 void
-ApiCommandParser::sendCommand(uint8_t dest, uint8_t type, uint8_t offset,
+ApiCommandParser::sendCommand(uint8_t dest, uint16_t type, uint8_t offset,
 			       const uint8_t *data, size_t count,
 			       bool expectResponse)
 {   
     std::vector<uint8_t> sendData(data, data + count);
 
     m_retriesLeft = MaxRequestRetries;
+
+    DebugStream& debug = Options::messageDebug();
+    debug << "New EmsMessage: dest=";
+    debug << boost::format("0x%02x ") % (unsigned int) dest << " type=";
+    debug << boost::format("0x%04x ") % (unsigned int) type << " offset=";
+    debug << boost::format("%d ") % (unsigned int) offset << " \n";
+//    debug << boost::format("0x%08x ") % sendData <<"\n";
+    
+
+    
     m_activeRequest.reset(new EmsMessage(dest, type, offset, sendData, expectResponse));
     sendActiveRequest();
 }
 
-bool
-ApiCommandParser::parseIntParameter(std::istream& request, uint8_t& data, uint8_t max)
+template<typename T>bool
+ApiCommandParser::parseIntParameter(std::istream& request, T& data, unsigned int max)
 {
     unsigned int value;
 

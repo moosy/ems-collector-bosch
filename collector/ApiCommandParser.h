@@ -44,7 +44,6 @@ class ApiCommandParser : public boost::noncopyable
 	CommandResult parse(std::istream& request);
 	boost::tribool onIncomingMessage(const EmsMessage& message);
 	bool onTimeout();
-	void onNoResponse();
 
     public:
 	static std::string buildRecordResponse(const EmsProto::ErrorRecord *record);
@@ -58,10 +57,10 @@ class ApiCommandParser : public boost::noncopyable
 	CommandResult handleRawCommand(std::istream& request);
 #endif
 	CommandResult handleCacheCommand(std::istream& request);
-	CommandResult handleHkCommand(std::istream& request, uint8_t base);
-	CommandResult handleSingleByteValue(std::istream& request, uint8_t dest, uint8_t type,
+	CommandResult handleHkCommand(std::istream& request, uint16_t base);
+	CommandResult handleSingleByteValue(std::istream& request, uint8_t dest, uint16_t type,
 					    uint8_t offset, int multiplier, int min, int max);
-	CommandResult handleSetHolidayCommand(std::istream& request, uint8_t type, uint8_t offset);
+	CommandResult handleSetHolidayCommand(std::istream& request, uint16_t type, uint8_t offset);
 	CommandResult handleWwCommand(std::istream& request);
 	CommandResult handleThermDesinfectCommand(std::istream& request);
 	CommandResult handleZirkPumpCommand(std::istream& request);
@@ -72,14 +71,14 @@ class ApiCommandParser : public boost::noncopyable
 	bool parseHolidayEntry(const std::string& string, EmsProto::HolidayEntry *entry);
 
 	boost::tribool handleResponse();
-	void startRequest(uint8_t dest, uint8_t type, size_t offset, size_t length,
+	void startRequest(uint8_t dest, uint16_t type, size_t offset, size_t length,
 			  bool newRequest = true, bool raw = false);
 	bool continueRequest();
-	void sendCommand(uint8_t dest, uint8_t type, uint8_t offset,
+	void sendCommand(uint8_t dest, uint16_t type, uint8_t offset,
 			 const uint8_t *data, size_t count,
 			 bool expectResponse = false);
 	void sendActiveRequest();
-	bool parseIntParameter(std::istream& request, uint8_t& data, uint8_t max);
+	template<typename T>bool parseIntParameter(std::istream& request, T& data, unsigned int max);
 
 	void output(const std::string& line) {
 	    if (m_outputCb) {
@@ -101,7 +100,7 @@ class ApiCommandParser : public boost::noncopyable
 	size_t m_requestOffset;
 	size_t m_requestLength;
 	uint8_t m_requestDestination;
-	uint8_t m_requestType;
+	uint16_t m_requestType;
 	size_t m_parsePosition;
 	bool m_outputRawData;
 };

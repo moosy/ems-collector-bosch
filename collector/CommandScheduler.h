@@ -31,7 +31,6 @@ class EmsCommandClient
     public:
 	virtual void onIncomingMessage(const EmsMessage& message) = 0;
 	virtual void onTimeout() = 0;
-	virtual void onNoResponse() = 0;
 };
 
 class EmsCommandSender : public boost::noncopyable

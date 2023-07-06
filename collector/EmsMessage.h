@@ -256,7 +256,7 @@ class EmsValue {
 	};
 
 	struct ErrorEntry {
-	    uint8_t type;
+	    uint16_t type;
 	    unsigned int index;
 	    EmsProto::ErrorRecord record;
 	};
@@ -284,8 +284,8 @@ class EmsValue {
 	EmsValue(Type type, SubType subType, const EmsProto::SystemTimeRecord& time);
 	EmsValue(Type type, SubType subType, const std::string& value);
 
-	Type getType() const {
-	    return m_type;
+        Type getType() const {
+	    return m_type;	
 	}
 	SubType getSubType() const {
 	    return m_subType;
@@ -320,7 +320,7 @@ class EmsMessage
 	typedef boost::function<const EmsValue * (EmsValue::Type type, EmsValue::SubType subtype)> CacheAccessor;
 
 	EmsMessage(ValueHandler& valueHandler, CacheAccessor cacheAccesor, const std::vector<uint8_t>& data);
-	EmsMessage(uint8_t dest, uint8_t type, uint8_t offset,
+	EmsMessage(uint8_t dest, uint16_t type, uint8_t offset,
 		   const std::vector<uint8_t>& data, bool expectResponse);
 
 	void handle();
@@ -332,8 +332,9 @@ class EmsMessage
 	uint8_t getDestination() const {
 	    return m_dest; 
 	}
-	uint8_t getType() const {
-	    return m_type;
+	uint16_t getType() const {
+  	    return m_extType != 0 ? m_extType : m_type;
+
 	}
 	uint8_t getOffset() const {
 	    return m_offset;
@@ -420,7 +421,9 @@ class EmsMessage
 	uint8_t m_source;
 	uint8_t m_dest;
 	uint8_t m_type;
-	uint8_t m_offset;
+        uint16_t m_extType;
+	uint8_t m_offset
+	;
 };
 
 #endif /* __EMSMESSAGE_H__ */

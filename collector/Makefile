@@ -11,13 +11,13 @@ DEPFILE = .depend
 
 # Uncomment the following lines to build the collector with MySQL database
 # support. You'll need to have the development package of libmysql++ installed.
-# SRCS += Database.cpp
-# CFLAGS += -DHAVE_MYSQL -I/usr/include/mysql
-# LIBS += -lmysqlpp
+SRCS += Database.cpp
+CFLAGS += -DHAVE_MYSQL -I/usr/include/mysql
+LIBS += -lmysqlpp
 
 # Uncomment the following line in order to build the collector with support
 # for the 'raw read' and 'raw write' commands.
-# CFLAGS += -DHAVE_RAW_READWRITE_COMMAND
+CFLAGS += -DHAVE_RAW_READWRITE_COMMAND
 
 # Uncomment the following lines to build the collector with MQTT support.
 # If you want this, you need to clone the following repo to some directory
