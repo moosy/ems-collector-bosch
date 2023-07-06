@@ -1,9 +1,22 @@
-ems-collector
-=============
+ems-collector BOSCH EMS 2 version
+=================================
 
-Buderus EMS heating control data collection daemon
+ATTENTION: This version has implemented changes to the protocol
+which makes it INCOMPATIBLE with older Buderus EMS or EMS plus systems.
+It was written and adapted to work with a new Bosch Condens 9800i heater
+with a UI800 control panel.
 
-ems-collector logs serial data from a connected Buderus heating
+IT NEED A PATCHED VERSION OF DANNY BAUMANN'S ETHERSEX EMS PATCH, TOO!
+The EMS dialect used by Boch flips the meaning of the highest address bit!
+old (Buderus): bit 7 set == polling / sending, bit 7 not set == answer / writing
+new (Bosch): bit 7 set == answer / writing, bit 7 not set == polling / sending
+That means that all the addresses have now values greater then 0x80!
+
+
+
+Bosch EMS heating control data collection daemon
+
+ems-collector logs serial data from a connected Bosch heating
 by interpreting the incoming data and writing it into a mysql database. It
 also provides a telnet-like interface for sending commands to the heating
 and receiving a stream of incoming data when being used with a TCP-to-EMS
@@ -11,6 +24,8 @@ interface (e.g. NetIO with ethersex running on top)
 
 The ems data is described here:
 http://ems-gateway.myds.me/dokuwiki/doku.php?id=wiki:ems:telegramme
+(so far NOT updated to reflect the Bosch changes, see this source code
+for reference by now).
 
 Requirements
 ============
