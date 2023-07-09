@@ -35,6 +35,11 @@ ValueApi::getTypeName(EmsValue::Type type)
 	{ EmsValue::KomfortTemp, "comforttemperature" },
 	{ EmsValue::ReduzierteTemp, "reducedtemperature" },
 	{ EmsValue::ExtraTemp, "extratemperature" },
+	{ EmsValue::ManualTemp, "manualtemperature" },
+	{ EmsValue::TemporaryTemp, "temporarytemperature" },
+	{ EmsValue::BoostTemp, "boosttemperature" },
+	{ EmsValue::BoostHours, "boosthours" },
+	{ EmsValue::BoostActive, "boostactive" },
 	{ EmsValue::TagTemp, "daytemperature" },
 	{ EmsValue::NachtTemp, "nighttemperature" },
 	{ EmsValue::UrlaubTemp, "vacationtemperature" },
@@ -210,7 +215,11 @@ ValueApi::formatValue(const EmsValue& value)
     };
 
     static const std::map<uint8_t, const char *> HKOPMODEMAPPING = {
-	{ 0, "night" }, { 1, "day" }, { 2, "auto" }
+	{ 0, "off" }, { 1, "manual" }, { 2, "auto" }
+    };
+
+    static const std::map<uint8_t, const char *> WWOPMODEMAPPING = {
+	{ 0, "off" }, { 1, "eco" }, { 2, "comfort" }, { 3, "followheater" }, { 4, "auto" }
     };
 
     static const std::map<uint8_t, const char *> DAYMAPPING = {
@@ -275,8 +284,11 @@ ValueApi::formatValue(const EmsValue& value)
 		case EmsValue::Wartungsmeldungen: map = &MAINTENANCEMESSAGESMAPPING; break;
 		case EmsValue::WartungFaellig: map = &MAINTENANCENEEDEDMAPPING; break;
 		case EmsValue::Betriebsart:
-		    map = value.isForHK() ? &HKOPMODEMAPPING : &OPMODEMAPPING;
+		    if (value.isForHK())                      { map = &HKOPMODEMAPPING; } else 
+		    if (value.getSubType() == EmsValue::WW)   { map = &WWOPMODEMAPPING;}  else
+		                                              { map = &OPMODEMAPPING;}
 		    break;
+		    
 		case EmsValue::DesinfektionTag: map = &DAYMAPPING; break;
 		case EmsValue::GebaeudeArt: map = &BUILDINGTYPEMAPPING; break;
 		case EmsValue::HeizSystem: map = &HEATINGTYPEMAPPING; break;

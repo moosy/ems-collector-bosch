@@ -133,6 +133,12 @@ printDescriptive(std::ostream& stream, const EmsValue& value)
 	{ EmsValue::MaxTemp, "Maximale Temperatur" },
 	{ EmsValue::TagTemp, "Tagtemperatur" },
 	{ EmsValue::NachtTemp, "Nachttemperatur" },
+	{ EmsValue::ExtraTemp, "Extrawassertemperatur" },
+	{ EmsValue::KomfortTemp, "Komfortwassertemperatur" },
+	{ EmsValue::ReduzierteTemp, "Reduzierte Wassertemperatur" },
+	{ EmsValue::ManualTemp, "Manuelle Temperatur" },
+	{ EmsValue::TemporaryTemp, "Temporäre Raumtemperatur" },
+	{ EmsValue::BoostTemp, "Boosttemperatur" },
 	{ EmsValue::UrlaubTemp, "Urlaubstemperatur" },
 	{ EmsValue::RaumSollTemp, "Raum-Solltemperatur" },
 	{ EmsValue::RaumIstTemp, "Raum-Isttemperatur" },
@@ -258,6 +264,10 @@ printDescriptive(std::ostream& stream, const EmsValue& value)
 	{ EmsValue::MinTemp, "°C" },
 	{ EmsValue::MaxTemp, "°C" },
 	{ EmsValue::TagTemp, "°C" },
+	{ EmsValue::ManualTemp, "°C" },
+	{ EmsValue::TemporaryTemp, "°C" },
+	{ EmsValue::BoostTemp, "°C" },
+	{ EmsValue::BoostHours, "h" },
 	{ EmsValue::NachtTemp, "°C" },
 	{ EmsValue::UrlaubTemp, "°C" },
 	{ EmsValue::RaumSollTemp, "°C" },
@@ -341,8 +351,13 @@ printDescriptive(std::ostream& stream, const EmsValue& value)
     };
 
     static const std::map<uint8_t, const char *> HKOPMODEMAPPING = {
-	{ 0, "immer Nachtbetrieb" }, { 1, "immer Tagbetrieb" }, { 2, "Automatik" }
+	{ 0, "aus" }, { 1, "durchheizen" }, { 2, "Automatik" }
     };
+    
+    static const std::map<uint8_t, const char *> WWOPMODEMAPPING = {
+        { 0, "aus" }, { 1, "Eco" }, { 2, "Komfort" }, { 3, "wie Heizung" }, { 4, "Automatik" }
+    };
+    
 
     static const std::map<uint8_t, const char *> BUILDINGTYPEMAPPING = {
 	{ 0, "leicht" }, { 1, "mittel" }, { 2, "schwer" }
@@ -419,9 +434,11 @@ printDescriptive(std::ostream& stream, const EmsValue& value)
 		case EmsValue::Schaltpunkte: map = &ZIRKSPMAPPING; break;
 		case EmsValue::Wartungsmeldungen: map = &MAINTENANCEMESSAGESMAPPING; break;
 		case EmsValue::WartungFaellig: map = &MAINTENANCENEEDEDMAPPING; break;
-		case EmsValue::Betriebsart:
-		    map = value.isForHK() ? &HKOPMODEMAPPING : &OPMODEMAPPING;
-		    break;
+                case EmsValue::Betriebsart:
+                    if (value.isForHK())                      { map = &HKOPMODEMAPPING; } else
+                    if (value.getSubType() == EmsValue::WW)   { map = &WWOPMODEMAPPING;}  else
+                                                              { map = &OPMODEMAPPING;}
+                    break;
 		case EmsValue::DesinfektionTag: map = &WEEKDAYMAPPING; break;
 		case EmsValue::GebaeudeArt: map = &BUILDINGTYPEMAPPING; break;
 		case EmsValue::HeizSystem: map = &HEATINGTYPEMAPPING; break;

@@ -101,6 +101,11 @@ class EmsValue {
 	    SetTemp, /* Kessel */
 	    MinTemp, /* HKx, Aussentemp. der Region */
 	    MaxTemp, /* HKx, WW */
+	    ManualTemp, 
+	    TemporaryTemp,
+	    BoostTemp,
+	    BoostHours,
+	    BoostActive,
 	    KomfortTemp,
 	    ReduzierteTemp,
 	    ExtraTemp,
@@ -347,6 +352,8 @@ class EmsMessage
         void parseUBA2ErrorMessage();
 
         void parseUI800ErrorMessage();
+        void parseUI800WWConfiguration();
+        void parseUI800HKConfiguration();
 
 	void parseRCTimeMessage();
 

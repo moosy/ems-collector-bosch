@@ -261,8 +261,15 @@ ApiCommandParser::handleHkCommand(std::istream& request, uint16_t type)
 
     if (cmd == "help") {
 	output("Available subcommands:\n"
+	       "requestdata\n"
 		"OK");
 	return Ok;
+
+
+    } else if (cmd == "requestdata") {
+        startRequest(EmsProto::addressUI800, 0x01b9, 0, 32, true, true);
+        return Ok;
+
     }
     return InvalidCmd;
 }
@@ -315,6 +322,8 @@ ApiCommandParser::handleWwCommand(std::istream& request)
 
     } else if (cmd == "requestdata") {
         startRequest(EmsProto::addressUBA2, 0xea, 0, 25, true, true);
+        startRequest(EmsProto::addressUI800, 0x01f5, 0, 21, true, true);
+
         return Ok;
 
     } else if (cmd == "comforttemp") {

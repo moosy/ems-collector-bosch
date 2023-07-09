@@ -292,7 +292,7 @@ EmsMessage::handle()
     switch (m_source) {
 	case EmsProto::addressUBA2:
 	    /* BOSCH UBA message */
-	    switch (m_type) {
+	    switch (getType()) {
 		case 0xd1: parseUBA2OutdoorMessage(); handled = true; break;
                 case 0xe4: parseUBA2MonitorMessage(); handled = true; break;
                 case 0xe5: parseUBA2MonitorMessage2(); handled = true; break;
@@ -305,9 +305,12 @@ EmsMessage::handle()
 	    break;
 	case EmsProto::addressUI800:
 	    /* BOSCH UI controller message */
-	    switch (m_type) {
-		case 0x06: parseRCTimeMessage(); handled = true; break;
-		case 0xbf: parseUI800ErrorMessage(); handled = true; break;
+	    switch (getType()) {
+		case 0x06:   parseRCTimeMessage(); handled = true; break;
+		case 0xbf:   parseUI800ErrorMessage(); handled = true; break;
+		case 0x01f5: parseUI800WWConfiguration(); handled = true; break;
+		case 0x01b9: parseUI800HKConfiguration(); handled = true; break;
+		
 
 	    }
 	    break;
@@ -361,6 +364,27 @@ void
 EmsMessage::parseUBA2ErrorMessage()
 {
   parseUI800ErrorMessage();
+
+}
+
+void
+EmsMessage::parseUI800WWConfiguration()
+{
+  parseEnum(2, EmsValue::Betriebsart, EmsValue::WW);
+
+}
+
+
+void
+EmsMessage::parseUI800HKConfiguration()
+{
+  parseEnum(21, EmsValue::Betriebsart, EmsValue::HK1);
+
+  parseNumeric(8, 1, 2, EmsValue::TemporaryTemp, EmsValue::HK1,false,&INVALID_TEMPERATURE_VALUES);
+  parseNumeric(22, 1, 2, EmsValue::ManualTemp, EmsValue::HK1);
+  parseBool(23, 0, EmsValue::BoostActive, EmsValue::HK1);
+  parseNumeric(24, 1, 1, EmsValue::BoostHours, EmsValue::HK1);
+  parseNumeric(25, 1, 2, EmsValue::BoostTemp, EmsValue::HK1);
 
 }
 
