@@ -23,6 +23,7 @@
 #include <boost/logic/tribool.hpp>
 #include "CommandScheduler.h"
 #include "ValueCache.h"
+#include <codecvt> 
 
 class ApiCommandParser : public boost::noncopyable
 {
@@ -39,7 +40,8 @@ class ApiCommandParser : public boost::noncopyable
 	ApiCommandParser(EmsCommandSender& sender,
 			 const boost::shared_ptr<EmsCommandClient>& client,
 			 ValueCache *cache,
-			 OutputCallback outputCb);
+			 OutputCallback outputCb,
+			 boost::asio::io_service& ios);
 
 	CommandResult parse(std::istream& request);
 	boost::tribool onIncomingMessage(const EmsMessage& message);
@@ -80,6 +82,10 @@ class ApiCommandParser : public boost::noncopyable
 	void sendActiveRequest();
 	template<typename T>bool parseIntParameter(std::istream& request, T& data, unsigned int max);
 
+
+        void refreshTestMode();
+
+
 	void output(const std::string& line) {
 	    if (m_outputCb) {
 		m_outputCb(line);
@@ -103,6 +109,7 @@ class ApiCommandParser : public boost::noncopyable
 	uint16_t m_requestType;
 	size_t m_parsePosition;
 	bool m_outputRawData;
+	boost::asio::deadline_timer testModeRepeater;
 };
 
 #endif /* __APICOMMANDPARSER_H__ */

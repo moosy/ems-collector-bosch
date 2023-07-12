@@ -86,7 +86,7 @@ CommandConnection::CommandConnection(boost::asio::io_service& ios,
 				     ValueCache *cache) :
     m_socket(ios),
     m_commandClient(new CommandClient(this)),
-    m_parser(sender, m_commandClient, cache, boost::bind(&CommandConnection::respond, this, boost::placeholders::_1)),
+    m_parser(sender, m_commandClient, cache, boost::bind(&CommandConnection::respond, this, boost::placeholders::_1), ios),
     m_handler(handler)
 {
 }

@@ -30,14 +30,17 @@
 ApiCommandParser::ApiCommandParser(EmsCommandSender& sender,
 				   const boost::shared_ptr<EmsCommandClient>& client,
 				   ValueCache *cache,
-				   OutputCallback outputCb) :
+				   OutputCallback outputCb,
+				   boost::asio::io_service& ios) :
     m_sender(sender),
     m_client(client),
     m_cache(cache),
     m_outputCb(outputCb),
     m_responseCounter(0),
     m_parsePosition(0),
-    m_outputRawData(false)
+    m_outputRawData(false),
+    testModeRepeater(ios)
+    
 {
 }
 
@@ -113,6 +116,8 @@ ApiCommandParser::handleRcCommand(std::istream& request)
 
     if (cmd == "help") {
 	output("Available subcommands:\n"
+	       "getcontactinfo\n"
+	       "setcontactinfo 1|2|3 <text>\n"
 		"settime YYYY-MM-DD HH:MM:SS\n"
 		"OK");
 	return Ok;
@@ -152,10 +157,76 @@ ApiCommandParser::handleRcCommand(std::istream& request)
 
 	sendCommand(EmsProto::addressUI800, 0x06, 0, (uint8_t *) &record, sizeof(record));
 	return Ok;
+    } else if (cmd == "getcontactinfo") {
+        startRequest(EmsProto::addressUI800, 0x0137, 0, 120);
+        return Ok;
+    } else if (cmd == "setcontactinfo") {
+        unsigned int line;
+        std::ostringstream buffer;
+        std::string text;
+
+        request >> line;
+        if (!request || line < 1 || line > 3) {
+            return InvalidArgs;
+        }
+
+        while (request) {
+            std::string token;
+            request >> token;
+            buffer << token << " ";
+        }
+
+        // make sure there's at least 20 characters in there
+        buffer << "                     ";
+
+
+
+        text = buffer.str().substr(0, 20);
+
+
+        std::wstring_convert<std::codecvt_utf8_utf16<char16_t>,char16_t> convert; 
+        std::u16string wtxt = convert.from_bytes(text); 
+
+
+        uint8_t buf2[20];
+       
+        for (int chunk=0; chunk<2; chunk++){
+       
+          for (size_t i = 0; i < 10; i++) {
+            buf2[2*i+1] = (uint8_t) (wtxt[i+chunk*10] & 0xFF);
+            buf2[2*i] = (uint8_t) ((wtxt[i+chunk*10] >> 8) & 0xFF);
+          }
+        
+          sendCommand(EmsProto::addressUI800, 0x0137, chunk * 20 + (line - 1) * 40, (uint8_t *) buf2, 20);
+        }
+
+        output("\nOK");
+        return Ok;
     }
 
     return InvalidCmd;
 }
+
+
+void 
+ApiCommandParser::refreshTestMode()
+{
+    uint8_t data[1];
+    memset(&data, 0, sizeof(data));
+    data[0] = 0x5a;
+
+    sendCommand(EmsProto::addressUBA2, 0x1d, 0, data, sizeof(data));
+    testModeRepeater.expires_from_now(boost::posix_time::milliseconds(5000));
+    testModeRepeater.async_wait([this] (const boost::system::error_code& error) {
+       if (error != boost::asio::error::operation_aborted) refreshTestMode();
+
+    });
+
+
+}
+
+
+
 
 ApiCommandParser::CommandResult
 ApiCommandParser::handleUbaCommand(std::istream& request)
@@ -165,8 +236,106 @@ ApiCommandParser::handleUbaCommand(std::istream& request)
 
     if (cmd == "help") {
 	output("Available subcommands:\n"
+	        "testmode <on|off>\n"
+	        "teststate <burnerpct> <fanpct> <pumppct> <3way012> <zirkpump01> <ignition01> <ionisator01>\n"
 		"OK");
 	return Ok;
+
+
+    } else if (cmd == "testmode") {
+
+        std::string mode;
+        request >> mode;
+
+        if (mode == "on") {
+
+            testModeRepeater.expires_from_now(boost::posix_time::milliseconds(1000));
+            testModeRepeater.async_wait([this] (const boost::system::error_code& error) {
+              refreshTestMode();
+            
+            });
+            
+            output("OK");        
+
+            return Ok;
+            
+
+        } else if (mode == "off") {
+
+            testModeRepeater.cancel();
+            
+            uint8_t data[1];
+            memset(&data, 0, sizeof(data));
+            data[0] = 0x00;
+
+            sendCommand(EmsProto::addressUBA2, 0x1d, 0, data, sizeof(data));
+
+            output("OK");        
+
+            return Ok;
+        }
+
+        return InvalidArgs;
+        
+
+        
+    } else if (cmd == "teststate") {
+        std::string mode;
+        uint8_t data[13];
+
+        memset(&data, 0, sizeof(data));
+        unsigned int brennerPercent, fanPercent, pumpePercent, threeWayMode;
+        bool zirkPumpOn, ionisatorOn, ignitionOn;
+
+        request >> brennerPercent;
+        if (!request || brennerPercent > 100) {
+            brennerPercent = 0;
+        }
+
+        request >> fanPercent;
+        if (!request || fanPercent > 100) {
+            fanPercent = 0;
+        }
+
+        
+        request >> pumpePercent;
+        if (!request || pumpePercent > 100) {
+            pumpePercent = 0;
+        }
+        
+        request >> threeWayMode;
+        if (!request || threeWayMode > 2) {
+            threeWayMode = 0;
+        }
+                  
+        request >> zirkPumpOn;
+        if (!request) {
+            zirkPumpOn = false;
+        }
+
+        request >> ignitionOn;
+        if (!request) {
+            ignitionOn = false;
+        }
+
+        request >> ionisatorOn;
+        if (!request) {
+            ionisatorOn = false;
+        }
+
+            
+
+        data[0] = brennerPercent;
+        data[2] = pumpePercent;
+        data[3] = threeWayMode;
+        data[4] = zirkPumpOn ? 1 : 0;
+        data[7] = ignitionOn ? 1 : 0;
+        data[9] = fanPercent;
+        data[12] = ionisatorOn ? 1 : 0;
+        
+
+        sendCommand(EmsProto::addressUBA2, 0x2d, 0, data, sizeof(data));
+        return Ok;
     }
 
     return InvalidCmd;
@@ -472,6 +641,33 @@ ApiCommandParser::handleResponse()
 	    startRequest(SOURCES[index + 1].source, 0x02, 0, 3);
 	    break;
 	}
+	
+        case 0x0137: { /* get contact info */
+            if (!continueRequest()) {
+                for (size_t i = 0; i < m_requestResponse.size(); i += 40) {
+                    size_t len = std::min(m_requestResponse.size() - i, static_cast<size_t>(40));
+                    char buffer[40];
+                    memcpy(buffer, &m_requestResponse.at(i), len);
+                    buffer[len] = 0;
+                    
+                    std::u16string inln = u"                    "; 
+                    std::wstring_convert<std::codecvt_utf8_utf16<char16_t>,char16_t> convert; 
+
+                    for (int i=0; i<20; i++){
+
+                      inln[i] = ((buffer[2*i] & 0xff)<<8)  + (buffer[2*i+1] & 0xff); 
+                    }
+
+                    std::string outln = convert.to_bytes(inln);     
+                    
+                    output(outln);
+                }
+                return true;
+            }
+            break;
+
+	}
+	
 	default:
 	    /* unhandled message */
 	    return false;
