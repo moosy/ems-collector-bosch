@@ -179,13 +179,11 @@ ApiCommandParser::handleRcCommand(std::istream& request)
         // make sure there's at least 20 characters in there
         buffer << "                     ";
 
-
-
-        text = buffer.str().substr(0, 20);
+        text = buffer.str();  // Special Chars have more than one byte, so no cropping here...
 
 
         std::wstring_convert<std::codecvt_utf8_utf16<char16_t>,char16_t> convert; 
-        std::u16string wtxt = convert.from_bytes(text); 
+        std::u16string wtxt = convert.from_bytes(text).substr(0,20); // ...we crop the widestring instead
 
 
         uint8_t buf2[20];
@@ -224,8 +222,6 @@ ApiCommandParser::refreshTestMode()
 
 
 }
-
-
 
 
 ApiCommandParser::CommandResult
@@ -277,7 +273,6 @@ ApiCommandParser::handleUbaCommand(std::istream& request)
 
         return InvalidArgs;
         
-
         
     } else if (cmd == "teststate") {
         std::string mode;
@@ -323,7 +318,6 @@ ApiCommandParser::handleUbaCommand(std::istream& request)
             ionisatorOn = false;
         }
 
-            
 
         data[0] = brennerPercent;
         data[2] = pumpePercent;
@@ -333,7 +327,6 @@ ApiCommandParser::handleUbaCommand(std::istream& request)
         data[9] = fanPercent;
         data[12] = ionisatorOn ? 1 : 0;
         
-
         sendCommand(EmsProto::addressUBA2, 0x2d, 0, data, sizeof(data));
         return Ok;
     }
@@ -375,11 +368,7 @@ ApiCommandParser::handleRawCommand(std::istream& request)
 	    return InvalidArgs;
 	}
 
-
 	sendCommand(target, type, offset, &value, 1);
-//        uint8_t  v2[3] = {1,245 ,0};
-//        v2[2] = value;
-// 	sendCommand(target, type, offset, v2, 3);
 	
 	return Ok;
     }
@@ -510,6 +499,7 @@ ApiCommandParser::handleWwCommand(std::istream& request)
         }
         sendCommand(EmsProto::addressUBA2, 0xea, 18, &temperature, 1);
         return Ok;
+
     } else if (cmd == "extratemp") {
         uint8_t temperature;
         if (!parseIntParameter(request, temperature, 80) || temperature < 30) {
@@ -525,22 +515,21 @@ ApiCommandParser::handleWwCommand(std::istream& request)
         }
         sendCommand(EmsProto::addressUI800, 0x01f5, 10, &duration, 1);
         return Ok;
+
     } else if (cmd == "extrastart") {
         uint8_t value = 0xff;
         sendCommand(EmsProto::addressUI800, 0x01f5, 11, &value, 1);
         return Ok;
+
     } else if (cmd == "extrastop") {
         uint8_t value = 0x00;
         sendCommand(EmsProto::addressUI800, 0x01f5, 11, &value, 1);
         return Ok;
 
-
     }
     
-
     return InvalidCmd;
 }
-
 
 
 boost::tribool
@@ -562,9 +551,6 @@ ApiCommandParser::onIncomingMessage(const EmsMessage& message)
 	return offset != 0x04;
     }
 
-
-
-
     if (source != m_requestDestination ||
 	    type != m_requestType      ||
 	    offset != (m_requestResponse.size() + m_requestOffset)) {
@@ -573,15 +559,12 @@ ApiCommandParser::onIncomingMessage(const EmsMessage& message)
     }
 
 
-
     if (data.empty()) {
 	// no more data is available
 	m_requestLength = m_requestResponse.size();
     } else {
 	m_requestResponse.insert(m_requestResponse.end(), data.begin(), data.end());
     }
-
-
 
 
     boost::tribool result;
@@ -648,7 +631,6 @@ ApiCommandParser::handleResponse()
                     size_t len = std::min(m_requestResponse.size() - i, static_cast<size_t>(40));
                     char buffer[40];
                     memcpy(buffer, &m_requestResponse.at(i), len);
-                    buffer[len] = 0;
                     
                     std::u16string inln = u"                    "; 
                     std::wstring_convert<std::codecvt_utf8_utf16<char16_t>,char16_t> convert; 
