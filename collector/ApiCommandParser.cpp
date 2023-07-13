@@ -419,6 +419,12 @@ ApiCommandParser::handleHkCommand(std::istream& request, uint16_t type)
 
     if (cmd == "help") {
 	output("Available subcommands:\n"
+	       "mode off|manual|auto\n"
+	       "manualtemp <temp>\n"
+	       "temporarytemp <temp>|off\n"
+	       "activateboost on|off\n"
+	       "boosthours <hours>\n"
+	       "boosttemp <temp>\n"
 	       "requestdata\n"
 		"OK");
 	return Ok;
@@ -426,6 +432,73 @@ ApiCommandParser::handleHkCommand(std::istream& request, uint16_t type)
 
     } else if (cmd == "requestdata") {
         startRequest(EmsProto::addressUI800, 0x01b9, 0, 32, true, true);
+        return Ok;
+
+    } else if (cmd == "mode") {
+        uint8_t data;
+        std::string mode;
+
+        request >> mode;
+
+        if (mode == "off")        data = 0x00;
+        else if (mode == "manual") data = 0x01;
+        else if (mode == "auto")  data = 0x02;
+        else return InvalidArgs;
+
+        sendCommand(EmsProto::addressUI800, 0x01b9, 21, &data, 1);
+        return Ok;
+
+    } else if (cmd == "manualtemp") {
+        uint8_t temperature;
+        if (!parseIntParameter(request, temperature, 30) || temperature < 5) {
+            return InvalidArgs;
+        }
+        // FIXME: Add support for x.5 temp values
+        temperature = temperature << 1;
+        sendCommand(EmsProto::addressUI800, 0x01b9, 22, &temperature, 1);
+        return Ok;
+
+    } else if (cmd == "temporarytemp") {
+        uint8_t temperature;
+        if (!parseIntParameter(request, temperature, 30) || temperature < 0) {
+            temperature = 0xff;  // disable
+        } else {
+            // FIXME: Add support for x.5 temp values
+
+            temperature = temperature << 1;
+        }
+        sendCommand(EmsProto::addressUI800, 0x01b9, 8, &temperature, 1);
+        return Ok;
+
+    } else if (cmd == "activateboost") {
+        uint8_t data;
+        std::string mode;
+
+        request >> mode;
+
+        if (mode == "off")        data = 0x00;
+        else if (mode == "on")    data = 0xff;
+        else return InvalidArgs;
+
+        sendCommand(EmsProto::addressUI800, 0x01b9, 23, &data, 1);
+        return Ok;
+
+    } else if (cmd == "boosttemp") {
+        uint8_t temperature;
+        if (!parseIntParameter(request, temperature, 30) || temperature < 5) {
+            return InvalidArgs;
+        }
+        // FIXME: Add support for x.5 temp values
+        temperature = temperature << 1;
+        sendCommand(EmsProto::addressUI800, 0x01b9, 25, &temperature, 1);
+        return Ok;
+
+    } else if (cmd == "boosthours") {
+        uint8_t hours;
+        if (!parseIntParameter(request, hours, 8) || hours < 1) {
+            return InvalidArgs;
+        }
+        sendCommand(EmsProto::addressUI800, 0x01b9, 24, &hours, 1);
         return Ok;
 
     }
@@ -467,6 +540,7 @@ ApiCommandParser::handleWwCommand(std::istream& request)
 
     if (cmd == "help") {
 	output("Available subcommands:\n"
+	       "mode off|eco|comfort|followheater|auto \n"
                "comforttemp <temp> \n"
                "reducedtemp <temp> \n"
                "extratemp <temp> \n"
@@ -476,6 +550,22 @@ ApiCommandParser::handleWwCommand(std::istream& request)
                "requestdata \n"
 		"OK");
 	return Ok;
+
+    } else if (cmd == "mode") {
+        uint8_t data;
+        std::string mode;
+
+        request >> mode;
+
+        if (mode == "off")        data = 0x00;
+        else if (mode == "eco") data = 0x01;
+        else if (mode == "comfort") data = 0x02;
+        else if (mode == "followheater") data = 0x03;
+        else if (mode == "auto")  data = 0x04;
+        else return InvalidArgs;
+
+        sendCommand(EmsProto::addressUI800, 0x01f5, 2, &data, 1);
+        return Ok;
 
 
     } else if (cmd == "requestdata") {
