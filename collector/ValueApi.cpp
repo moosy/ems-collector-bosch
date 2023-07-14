@@ -40,6 +40,11 @@ ValueApi::getTypeName(EmsValue::Type type)
 	{ EmsValue::BoostTemp, "boosttemperature" },
 	{ EmsValue::BoostHours, "boosthours" },
 	{ EmsValue::BoostActive, "boostactive" },
+	{ EmsValue::ExtraActive, "extraactive" },
+	{ EmsValue::BoostRemainingMins, "boostremainingmins" },
+	{ EmsValue::ExtraRemainingMins, "extraremainingmins" },
+	{ EmsValue::Extra15Mins, "extra15mins" },
+	{ EmsValue::ZirkProStunde, "zirksperhour" },
 	{ EmsValue::TagTemp, "daytemperature" },
 	{ EmsValue::NachtTemp, "nighttemperature" },
 	{ EmsValue::UrlaubTemp, "vacationtemperature" },
@@ -218,6 +223,10 @@ ValueApi::formatValue(const EmsValue& value)
 	{ 0, "off" }, { 1, "manual" }, { 2, "auto" }
     };
 
+    static const std::map<uint8_t, const char *> ZIRKOPMODEMAPPING = {
+	{ 0, "off" }, { 1, "on" }, { 2, "followww" }, { 3, "auto" }
+    };
+
     static const std::map<uint8_t, const char *> WWOPMODEMAPPING = {
 	{ 0, "off" }, { 1, "eco" }, { 2, "comfort" }, { 3, "followheater" }, { 4, "auto" }
     };
@@ -286,6 +295,7 @@ ValueApi::formatValue(const EmsValue& value)
 		case EmsValue::Betriebsart:
 		    if (value.isForHK())                      { map = &HKOPMODEMAPPING; } else 
 		    if (value.getSubType() == EmsValue::WW)   { map = &WWOPMODEMAPPING;}  else
+		    if (value.getSubType() == EmsValue::Zirkulation)   { map = &ZIRKOPMODEMAPPING;}  else		    
 		                                              { map = &OPMODEMAPPING;}
 		    break;
 		    

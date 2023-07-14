@@ -106,9 +106,14 @@ class EmsValue {
 	    BoostTemp,
 	    BoostHours,
 	    BoostActive,
+	    BoostRemainingMins,
 	    KomfortTemp,
 	    ReduzierteTemp,
+	    ExtraActive,
 	    ExtraTemp,
+	    Extra15Mins,
+	    ExtraRemainingMins,
+	    ZirkProStunde,
 	    TagTemp,
 	    NachtTemp,
 	    UrlaubTemp,
@@ -353,7 +358,9 @@ class EmsMessage
 
         void parseUI800ErrorMessage();
         void parseUI800WWConfiguration();
+        void parseUI800WWStatusData();
         void parseUI800HKConfiguration();
+        void parseUI800HKStatusData();
 
 	void parseRCTimeMessage();
 

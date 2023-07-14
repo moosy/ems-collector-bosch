@@ -432,6 +432,7 @@ ApiCommandParser::handleHkCommand(std::istream& request, uint16_t type)
 
     } else if (cmd == "requestdata") {
         startRequest(EmsProto::addressUI800, 0x01b9, 0, 32, true, true);
+        startRequest(EmsProto::addressUI800, 0x01a5, 0, 46, true, true);
         return Ok;
 
     } else if (cmd == "mode") {
@@ -541,12 +542,13 @@ ApiCommandParser::handleWwCommand(std::istream& request)
     if (cmd == "help") {
 	output("Available subcommands:\n"
 	       "mode off|eco|comfort|followheater|auto \n"
+	       "zirkmode off|on|followww|auto \n"
+               "zirksperhour <number> \n"
                "comforttemp <temp> \n"
                "reducedtemp <temp> \n"
                "extratemp <temp> \n"
                "extra15mins <extra duration quarterly hours> \n"
-               "extrastart \n"
-               "extrastop \n"               
+               "extra on|off \n"
                "requestdata \n"
 		"OK");
 	return Ok;
@@ -565,6 +567,21 @@ ApiCommandParser::handleWwCommand(std::istream& request)
         else return InvalidArgs;
 
         sendCommand(EmsProto::addressUI800, 0x01f5, 2, &data, 1);
+        return Ok;
+
+    } else if (cmd == "zirkmode") {
+        uint8_t data;
+        std::string mode;
+
+        request >> mode;
+
+        if (mode == "off")        data = 0x00;
+        else if (mode == "on") data = 0x01;
+        else if (mode == "followww") data = 0x02;
+        else if (mode == "auto")  data = 0x03;
+        else return InvalidArgs;
+
+        sendCommand(EmsProto::addressUI800, 0x01f5, 3, &data, 1);
         return Ok;
 
 
@@ -606,16 +623,28 @@ ApiCommandParser::handleWwCommand(std::istream& request)
         sendCommand(EmsProto::addressUI800, 0x01f5, 10, &duration, 1);
         return Ok;
 
-    } else if (cmd == "extrastart") {
-        uint8_t value = 0xff;
-        sendCommand(EmsProto::addressUI800, 0x01f5, 11, &value, 1);
+    } else if (cmd == "zirksperhour") {
+        uint8_t duration;
+        if (!parseIntParameter(request, duration, 10)) {
+            return InvalidArgs;
+        }
+        sendCommand(EmsProto::addressUBA2, 0xea, 11, &duration, 1);
         return Ok;
+        
+        
+   } else if (cmd == "extra") {
+        uint8_t data;
+        std::string mode;
 
-    } else if (cmd == "extrastop") {
-        uint8_t value = 0x00;
-        sendCommand(EmsProto::addressUI800, 0x01f5, 11, &value, 1);
+        request >> mode;
+
+        if (mode == "off")        data = 0x00;
+        else if (mode == "on") data = 0xff;
+        else return InvalidArgs;
+
+        sendCommand(EmsProto::addressUI800, 0x01f5, 11, &data, 1);
         return Ok;
-
+        
     }
     
     return InvalidCmd;

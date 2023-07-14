@@ -309,7 +309,9 @@ EmsMessage::handle()
 		case 0x06:   parseRCTimeMessage(); handled = true; break;
 		case 0xbf:   parseUI800ErrorMessage(); handled = true; break;
 		case 0x01f5: parseUI800WWConfiguration(); handled = true; break;
+		case 0x021d: parseUI800WWStatusData(); handled = true; break;
 		case 0x01b9: parseUI800HKConfiguration(); handled = true; break;
+		case 0x01a5: parseUI800HKStatusData(); handled = true; break;
 		
 
 	    }
@@ -371,8 +373,18 @@ void
 EmsMessage::parseUI800WWConfiguration()
 {
   parseEnum(2, EmsValue::Betriebsart, EmsValue::WW);
+  parseEnum(3, EmsValue::Betriebsart, EmsValue::Zirkulation);
+  parseNumeric(10, 1, 1, EmsValue::Extra15Mins, EmsValue::WW);
+  parseBool(11, 0, EmsValue::ExtraActive, EmsValue::WW);
 
 }
+
+void
+EmsMessage::parseUI800WWStatusData()
+{
+  parseNumeric(4, 2, 1, EmsValue::ExtraRemainingMins, EmsValue::WW);
+}
+
 
 
 void
@@ -388,6 +400,11 @@ EmsMessage::parseUI800HKConfiguration()
 
 }
 
+void
+EmsMessage::parseUI800HKStatusData()
+{
+  parseNumeric(41, 2, 1, EmsValue::BoostRemainingMins, EmsValue::HK1);
+}
 
 void
 EmsMessage::parseUI800ErrorMessage()
@@ -492,6 +509,7 @@ EmsMessage::parseUBA2WWParameterMessage()
 {
 
     parseNumeric(6, 1, 1, EmsValue::KomfortTemp, EmsValue::WW);
+    parseNumeric(11, 1, 1, EmsValue::ZirkProStunde, EmsValue::Zirkulation);
     parseNumeric(16, 1, 1, EmsValue::ExtraTemp, EmsValue::WW);
     parseNumeric(18, 1, 1, EmsValue::ReduzierteTemp, EmsValue::WW);
 

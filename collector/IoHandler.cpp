@@ -139,6 +139,7 @@ printDescriptive(std::ostream& stream, const EmsValue& value)
 	{ EmsValue::ManualTemp, "Manuelle Temperatur" },
 	{ EmsValue::TemporaryTemp, "Temporäre Raumtemperatur" },
 	{ EmsValue::BoostTemp, "Boosttemperatur" },
+	{ EmsValue::ZirkProStunde, "Zirkulationen pro Stunde" },
 	{ EmsValue::UrlaubTemp, "Urlaubstemperatur" },
 	{ EmsValue::RaumSollTemp, "Raum-Solltemperatur" },
 	{ EmsValue::RaumIstTemp, "Raum-Isttemperatur" },
@@ -357,6 +358,10 @@ printDescriptive(std::ostream& stream, const EmsValue& value)
     static const std::map<uint8_t, const char *> WWOPMODEMAPPING = {
         { 0, "aus" }, { 1, "Eco" }, { 2, "Komfort" }, { 3, "wie Heizung" }, { 4, "Automatik" }
     };
+
+    static const std::map<uint8_t, const char *> ZIRKOPMODEMAPPING = {
+        { 0, "aus" }, { 1, "ein" }, { 2, "wie Warmwasser" }, { 3, "Automatik" }
+    };
     
 
     static const std::map<uint8_t, const char *> BUILDINGTYPEMAPPING = {
@@ -437,6 +442,7 @@ printDescriptive(std::ostream& stream, const EmsValue& value)
                 case EmsValue::Betriebsart:
                     if (value.isForHK())                      { map = &HKOPMODEMAPPING; } else
                     if (value.getSubType() == EmsValue::WW)   { map = &WWOPMODEMAPPING;}  else
+                    if (value.getSubType() == EmsValue::Zirkulation)   { map = &ZIRKOPMODEMAPPING;}  else
                                                               { map = &OPMODEMAPPING;}
                     break;
 		case EmsValue::DesinfektionTag: map = &WEEKDAYMAPPING; break;
