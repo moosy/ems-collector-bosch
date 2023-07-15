@@ -450,25 +450,14 @@ ApiCommandParser::handleHkCommand(std::istream& request, uint16_t type)
         return Ok;
 
     } else if (cmd == "manualtemp") {
-        uint8_t temperature;
-        if (!parseIntParameter(request, temperature, 30) || temperature < 5) {
-            return InvalidArgs;
-        }
-        // FIXME: Add support for x.5 temp values
-        temperature = temperature << 1;
-        sendCommand(EmsProto::addressUI800, 0x01b9, 22, &temperature, 1);
-        return Ok;
+        return handleSingleByteValue(request,EmsProto::addressUI800, 0x01b9, 22, 2, 5, 30);
 
     } else if (cmd == "temporarytemp") {
-        uint8_t temperature;
-        if (!parseIntParameter(request, temperature, 30) || temperature < 0) {
+          if (handleSingleByteValue(request,EmsProto::addressUI800, 0x01b9, 8, 2, 5, 30) != Ok){
+            uint8_t temperature;
             temperature = 0xff;  // disable
-        } else {
-            // FIXME: Add support for x.5 temp values
-
-            temperature = temperature << 1;
-        }
-        sendCommand(EmsProto::addressUI800, 0x01b9, 8, &temperature, 1);
+            sendCommand(EmsProto::addressUI800, 0x01b9, 8, &temperature, 1);
+          }
         return Ok;
 
     } else if (cmd == "activateboost") {
@@ -485,23 +474,10 @@ ApiCommandParser::handleHkCommand(std::istream& request, uint16_t type)
         return Ok;
 
     } else if (cmd == "boosttemp") {
-        uint8_t temperature;
-        if (!parseIntParameter(request, temperature, 30) || temperature < 5) {
-            return InvalidArgs;
-        }
-        // FIXME: Add support for x.5 temp values
-        temperature = temperature << 1;
-        sendCommand(EmsProto::addressUI800, 0x01b9, 25, &temperature, 1);
-        return Ok;
+        return handleSingleByteValue(request,EmsProto::addressUI800, 0x01b9, 25, 2, 5, 30);
 
     } else if (cmd == "boosthours") {
-        uint8_t hours;
-        if (!parseIntParameter(request, hours, 8) || hours < 1) {
-            return InvalidArgs;
-        }
-        sendCommand(EmsProto::addressUI800, 0x01b9, 24, &hours, 1);
-        return Ok;
-
+        return handleSingleByteValue(request,EmsProto::addressUI800, 0x01b9, 24, 1, 1, 8);
     }
     return InvalidCmd;
 }
@@ -592,53 +568,22 @@ ApiCommandParser::handleWwCommand(std::istream& request)
         return Ok;
 
     } else if (cmd == "comforttemp") {
-        uint8_t temperature;
-        if (!parseIntParameter(request, temperature, 80) || temperature < 30) {
-            return InvalidArgs;
-        }
-        sendCommand(EmsProto::addressUBA2, 0xea, 6, &temperature, 1);
-        return Ok;
-
+        return handleSingleByteValue(request,EmsProto::addressUBA2, 0xea, 6, 1, 30, 80);
     } else if (cmd == "reducedtemp") {
-        uint8_t temperature;
-        if (!parseIntParameter(request, temperature, 80) || temperature < 30) {
-            return InvalidArgs;
-        }
-        sendCommand(EmsProto::addressUBA2, 0xea, 18, &temperature, 1);
-        return Ok;
-
+        return handleSingleByteValue(request,EmsProto::addressUBA2, 0xea, 18, 1, 30, 80);
     } else if (cmd == "extratemp") {
-        uint8_t temperature;
-        if (!parseIntParameter(request, temperature, 80) || temperature < 30) {
-            return InvalidArgs;
-        }
-        sendCommand(EmsProto::addressUBA2, 0xea, 16, &temperature, 1);
-        return Ok;
-
+        return handleSingleByteValue(request,EmsProto::addressUBA2, 0xea, 16, 1, 30, 80);
     } else if (cmd == "extra15mins") {
-        uint8_t duration;
-        if (!parseIntParameter(request, duration, 16)) {
-            return InvalidArgs;
-        }
-        sendCommand(EmsProto::addressUI800, 0x01f5, 10, &duration, 1);
-        return Ok;
-
+        return handleSingleByteValue(request,EmsProto::addressUI800, 0x01f5, 10, 1, 0, 16);
     } else if (cmd == "zirksperhour") {
-        uint8_t duration;
-        if (!parseIntParameter(request, duration, 10)) {
-            return InvalidArgs;
-        }
-        sendCommand(EmsProto::addressUBA2, 0xea, 11, &duration, 1);
-        return Ok;
-        
-        
-   } else if (cmd == "extra") {
+        return handleSingleByteValue(request,EmsProto::addressUBA2, 0xea, 11, 1, 0, 6);
+    } else if (cmd == "extra") {
         uint8_t data;
         std::string mode;
 
         request >> mode;
 
-        if (mode == "off")        data = 0x00;
+        if (mode == "off")     data = 0x00;
         else if (mode == "on") data = 0xff;
         else return InvalidArgs;
 
