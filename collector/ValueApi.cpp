@@ -128,6 +128,7 @@ ValueApi::getTypeName(EmsValue::Type type)
 	{ EmsValue::Wartungsmeldungen, "maintenancereminder" },
 	{ EmsValue::WartungFaellig, "maintenancedue" },
 	{ EmsValue::Betriebsart, "opmode" },
+	{ EmsValue::Betriebszustand, "opstate" },
 	{ EmsValue::DesinfektionTag, "desinfectionday" },
 	{ EmsValue::GebaeudeArt, "buildingtype" },
 	{ EmsValue::AbsenkModus, "reductionmode" },
@@ -223,6 +224,10 @@ ValueApi::formatValue(const EmsValue& value)
 	{ 0, "off" }, { 1, "manual" }, { 2, "auto" }
     };
 
+    static const std::map<uint8_t, const char *> HKOPSTATEMAPPING = {
+	{ 0, "off" }, { 1, "reduced" }, { 2, "manual" }, { 3, "normal" }, { 6, "boost" }
+    };
+
     static const std::map<uint8_t, const char *> ZIRKOPMODEMAPPING = {
 	{ 0, "off" }, { 1, "on" }, { 2, "followww" }, { 3, "auto" }
     };
@@ -294,6 +299,14 @@ ValueApi::formatValue(const EmsValue& value)
 		case EmsValue::WartungFaellig: map = &MAINTENANCENEEDEDMAPPING; break;
 		case EmsValue::Betriebsart:
 		    if (value.isForHK())                      { map = &HKOPMODEMAPPING; } else 
+		    if (value.getSubType() == EmsValue::WW)   { map = &WWOPMODEMAPPING;}  else
+		    if (value.getSubType() == EmsValue::Zirkulation)   { map = &ZIRKOPMODEMAPPING;}  else		    
+		                                              { map = &OPMODEMAPPING;}
+		    break;
+		    
+		
+		case EmsValue::Betriebszustand:
+		    if (value.isForHK())                      { map = &HKOPSTATEMAPPING; } else 
 		    if (value.getSubType() == EmsValue::WW)   { map = &WWOPMODEMAPPING;}  else
 		    if (value.getSubType() == EmsValue::Zirkulation)   { map = &ZIRKOPMODEMAPPING;}  else		    
 		                                              { map = &OPMODEMAPPING;}

@@ -219,6 +219,7 @@ printDescriptive(std::ostream& stream, const EmsValue& value)
 
 	{ EmsValue::WWSystemType, "WW-System-Typ" },
 	{ EmsValue::Betriebsart, "Betriebsart" },
+	{ EmsValue::Betriebszustand, "Betriebszustand" },
 	{ EmsValue::Wartungsmeldungen, "Wartungsmeldungen" },
 	{ EmsValue::WartungFaellig, "Wartung fällig?" },
 	{ EmsValue::DesinfektionTag, "Thermische Desinfektion Tag" },
@@ -355,6 +356,11 @@ printDescriptive(std::ostream& stream, const EmsValue& value)
 	{ 0, "aus" }, { 1, "durchheizen" }, { 2, "Automatik" }
     };
     
+    static const std::map<uint8_t, const char *> HKOPSTATEMAPPING = {
+        { 0, "aus" }, { 1, "abgesenkt" }, { 2, "manuell" }, { 3, "normal" }, { 6, "boost" }
+    };
+    
+    
     static const std::map<uint8_t, const char *> WWOPMODEMAPPING = {
         { 0, "aus" }, { 1, "Eco" }, { 2, "Komfort" }, { 3, "wie Heizung" }, { 4, "Automatik" }
     };
@@ -441,6 +447,13 @@ printDescriptive(std::ostream& stream, const EmsValue& value)
 		case EmsValue::WartungFaellig: map = &MAINTENANCENEEDEDMAPPING; break;
                 case EmsValue::Betriebsart:
                     if (value.isForHK())                      { map = &HKOPMODEMAPPING; } else
+                    if (value.getSubType() == EmsValue::WW)   { map = &WWOPMODEMAPPING;}  else
+                    if (value.getSubType() == EmsValue::Zirkulation)   { map = &ZIRKOPMODEMAPPING;}  else
+                                                              { map = &OPMODEMAPPING;}
+                    break;
+
+                case EmsValue::Betriebszustand:
+                    if (value.isForHK())                      { map = &HKOPSTATEMAPPING; } else
                     if (value.getSubType() == EmsValue::WW)   { map = &WWOPMODEMAPPING;}  else
                     if (value.getSubType() == EmsValue::Zirkulation)   { map = &ZIRKOPMODEMAPPING;}  else
                                                               { map = &OPMODEMAPPING;}

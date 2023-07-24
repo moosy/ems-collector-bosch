@@ -310,8 +310,11 @@ EmsMessage::handle()
 		case 0xbf:   parseUI800ErrorMessage(); handled = true; break;
 		case 0x01f5: parseUI800WWConfiguration(); handled = true; break;
 		case 0x021d: parseUI800WWStatusData(); handled = true; break;
+		case 0x00e7: parseUI800ZPStatusData(); handled = true; break;
+		case 0x0140: parseUI800SystemParameterMessage(); handled = true; break;
 		case 0x01b9: parseUI800HKConfiguration(); handled = true; break;
 		case 0x01a5: parseUI800HKStatusData(); handled = true; break;
+		case 0x01af: parseUI800HKParameterMessage(); handled = true; break;
 		
 
 	    }
@@ -361,6 +364,22 @@ EmsMessage::parseBool(size_t offset, uint8_t bit,
 }
 
 
+void
+EmsMessage::parseUI800SystemParameterMessage()
+{
+    parseNumeric(10, 1, 1, EmsValue::MinTemp, EmsValue::RC);
+}
+
+
+void
+EmsMessage::parseUI800HKParameterMessage()
+{
+    parseNumeric(2, 1, 1, EmsValue::RaumOffset, EmsValue::HK1);
+    parseNumeric(5, 1, 1, EmsValue::AuslegungsTemp, EmsValue::HK1);
+}
+
+
+
 
 void
 EmsMessage::parseUBA2ErrorMessage()
@@ -383,8 +402,16 @@ void
 EmsMessage::parseUI800WWStatusData()
 {
   parseNumeric(4, 2, 1, EmsValue::ExtraRemainingMins, EmsValue::WW);
+  parseEnum(8, EmsValue::Betriebszustand, EmsValue::WW);
+
 }
 
+void
+EmsMessage::parseUI800ZPStatusData()
+{
+  parseEnum(0, EmsValue::Betriebszustand, EmsValue::Zirkulation);
+
+}
 
 
 void
@@ -397,6 +424,14 @@ EmsMessage::parseUI800HKConfiguration()
   parseBool(23, 0, EmsValue::BoostActive, EmsValue::HK1);
   parseNumeric(24, 1, 1, EmsValue::BoostHours, EmsValue::HK1);
   parseNumeric(25, 1, 2, EmsValue::BoostTemp, EmsValue::HK1);
+  
+  parseNumeric(4, 1, 2, EmsValue::NachtTemp, EmsValue::HK1);
+  parseNumeric(2, 1, 2, EmsValue::TagTemp, EmsValue::HK1);
+//    parseNumeric(3, 1, 2, EmsValue::UrlaubTemp, subtype);
+//    parseNumeric(4, 1, 2, EmsValue::RaumEinfluss, subtype);
+//    parseNumeric(6, 1, 2, EmsValue::RaumOffset, subtype);
+//    parseEnum(7, EmsValue::Betriebsart, subtype);
+
 
 }
 
@@ -404,6 +439,8 @@ void
 EmsMessage::parseUI800HKStatusData()
 {
   parseNumeric(41, 2, 1, EmsValue::BoostRemainingMins, EmsValue::HK1);
+  parseEnum(10, EmsValue::Betriebszustand, EmsValue::HK1);
+  
 }
 
 void

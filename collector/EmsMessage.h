@@ -198,6 +198,7 @@ class EmsValue {
 	    Wartungsmeldungen,
 	    WartungFaellig,
 	    Betriebsart,
+	    Betriebszustand,
 	    DesinfektionTag,
 	    GebaeudeArt,
 	    AbsenkModus,
@@ -357,11 +358,14 @@ class EmsMessage
         void parseUBA2ErrorMessage();
 
         void parseUI800ErrorMessage();
+        void parseUI800SystemParameterMessage();
         void parseUI800WWConfiguration();
         void parseUI800WWStatusData();
+        void parseUI800ZPStatusData();
+
         void parseUI800HKConfiguration();
         void parseUI800HKStatusData();
-
+        void parseUI800HKParameterMessage();
 	void parseRCTimeMessage();
 
 

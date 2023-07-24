@@ -116,11 +116,16 @@ ApiCommandParser::handleRcCommand(std::istream& request)
 
     if (cmd == "help") {
 	output("Available subcommands:\n"
+	       "mintemperature <temp>\n"
 	       "getcontactinfo\n"
 	       "setcontactinfo 1|2|3 <text>\n"
 		"settime YYYY-MM-DD HH:MM:SS\n"
 		"OK");
 	return Ok;
+	
+    } else if (cmd == "mintemperature") {
+        return handleSingleByteValue(request, EmsProto::addressUI800, 0x0140, 10, 1, -30, 0);
+	
     } else if (cmd == "settime") {
 	std::locale prevLocale = request.imbue(std::locale(std::locale::classic(),
 		new boost::local_time::local_time_input_facet("%Y-%m-%d %H:%M:%S")));
@@ -245,6 +250,7 @@ ApiCommandParser::handleUbaCommand(std::istream& request)
 
         if (mode == "on") {
 
+            testModeRepeater.cancel();
             testModeRepeater.expires_from_now(boost::posix_time::milliseconds(1000));
             testModeRepeater.async_wait([this] (const boost::system::error_code& error) {
               refreshTestMode();
@@ -421,7 +427,11 @@ ApiCommandParser::handleHkCommand(std::istream& request, uint16_t type)
 	output("Available subcommands:\n"
 	       "mode off|manual|auto\n"
 	       "manualtemp <temp>\n"
+	       "daytemperature <temp>\n"
+	       "nighttemperature <temp\n" 
 	       "temporarytemp <temp>|off\n"
+	       "designtemperature <temp>\n"
+	       "roomtemperatureoffset <temp>\n"
 	       "activateboost on|off\n"
 	       "boosthours <hours>\n"
 	       "boosttemp <temp>\n"
@@ -433,7 +443,16 @@ ApiCommandParser::handleHkCommand(std::istream& request, uint16_t type)
     } else if (cmd == "requestdata") {
         startRequest(EmsProto::addressUI800, 0x01b9, 0, 32, true, true);
         startRequest(EmsProto::addressUI800, 0x01a5, 0, 46, true, true);
+        startRequest(EmsProto::addressUI800, 0x01af, 0, 46, true, true);
+        startRequest(EmsProto::addressUI800, 0x0140, 0, 46, true, true);
+
         return Ok;
+
+    } else if (cmd == "roomtemperatureoffset") {
+        return handleSingleByteValue(request, EmsProto::addressUI800, 0x01af, 2, 1, -5, 5);
+        
+    } else if (cmd == "designtemperature") {
+        return handleSingleByteValue(request, EmsProto::addressUI800, 0x01af, 5, 1, 30, 90);
 
     } else if (cmd == "mode") {
         uint8_t data;
@@ -451,6 +470,12 @@ ApiCommandParser::handleHkCommand(std::istream& request, uint16_t type)
 
     } else if (cmd == "manualtemp") {
         return handleSingleByteValue(request,EmsProto::addressUI800, 0x01b9, 22, 2, 5, 30);
+        
+    } else if (cmd == "daytemperature") {
+        return handleSingleByteValue(request, EmsProto::addressUI800, 0x01b9, 2, 2, 5, 30);
+
+    } else if (cmd == "nighttemperature") {
+        return handleSingleByteValue(request, EmsProto::addressUI800, 0x01b9, 4, 2, 5, 30);
 
     } else if (cmd == "temporarytemp") {
           if (handleSingleByteValue(request,EmsProto::addressUI800, 0x01b9, 8, 2, 5, 30) != Ok){
