@@ -86,6 +86,7 @@ ValueApi::getTypeName(EmsValue::Type type)
 	{ EmsValue::NachlaufZeit, "followupminutes" },
 	{ EmsValue::DesinfektionStunde, "desinfectionhour" },
 	{ EmsValue::HektoStundenVorWartung, "maintenanceintervalin100hours" },
+	{ EmsValue::MonateVorWartung, "maintenanceintervalinmonthsuptime" },
 	{ EmsValue::PausenZeit, "pausehours" },
 	{ EmsValue::PartyZeit, "partyhours" },
 
@@ -103,6 +104,7 @@ ValueApi::getTypeName(EmsValue::Type type)
 	{ EmsValue::WarmwasserTempOK, "warmwatertempok" },
 	{ EmsValue::Tagbetrieb, "daymode" },
 	{ EmsValue::Sommerbetrieb, "summermode" },
+	{ EmsValue::Sommerbetriebsart, "summeropmode" },
 	{ EmsValue::Ausschaltoptimierung, "offoptimization" },
 	{ EmsValue::Einschaltoptimierung, "onoptimization" },
 	{ EmsValue::Estrichtrocknung, "floordrying" },
@@ -140,6 +142,7 @@ ValueApi::getTypeName(EmsValue::Type type)
 
 	{ EmsValue::HKKennlinie, "characteristic" },
 	{ EmsValue::Fehler, "error" },
+	{ EmsValue::Stoerung, "fault" },
 	{ EmsValue::SystemZeit, "systemtime" },
 	{ EmsValue::Wartungstermin, "maintenancedate" },
 
@@ -205,7 +208,7 @@ ValueApi::formatValue(const EmsValue& value)
     };
 
     static const std::map<uint8_t, const char *> MAINTENANCEMESSAGESMAPPING = {
-	{ 0, "off" }, { 1, "byhours" }, { 2, "bydate" }
+	{ 0, "off" }, { 1, "byhours" }, { 2, "bydate" }, { 3, "bymonths" }
     };
 
     static const std::map<uint8_t, const char *> MAINTENANCENEEDEDMAPPING = {
@@ -222,6 +225,10 @@ ValueApi::formatValue(const EmsValue& value)
 
     static const std::map<uint8_t, const char *> HKOPMODEMAPPING = {
 	{ 0, "off" }, { 1, "manual" }, { 2, "auto" }
+    };
+
+    static const std::map<uint8_t, const char *> HKSUMMEROPMODEMAPPING = {
+	{ 1, "auto" }, { 2, "heateron" }
     };
 
     static const std::map<uint8_t, const char *> HKOPSTATEMAPPING = {
@@ -242,7 +249,7 @@ ValueApi::formatValue(const EmsValue& value)
     };
 
     static const std::map<uint8_t, const char *> BUILDINGTYPEMAPPING = {
-	{ 0, "light" }, { 1, "medium" }, { 2, "heavy" }
+	{ 1, "light" }, { 2, "medium" }, { 3, "heavy" }
     };
 
     static const std::map<uint8_t, const char *> HEATINGTYPEMAPPING = {
@@ -297,6 +304,8 @@ ValueApi::formatValue(const EmsValue& value)
 		case EmsValue::Schaltpunkte: map = &ZIRKSPMAPPING; break;
 		case EmsValue::Wartungsmeldungen: map = &MAINTENANCEMESSAGESMAPPING; break;
 		case EmsValue::WartungFaellig: map = &MAINTENANCENEEDEDMAPPING; break;
+		case EmsValue::Sommerbetriebsart: map = &HKSUMMEROPMODEMAPPING; break;
+		
 		case EmsValue::Betriebsart:
 		    if (value.isForHK())                      { map = &HKOPMODEMAPPING; } else 
 		    if (value.getSubType() == EmsValue::WW)   { map = &WWOPMODEMAPPING;}  else

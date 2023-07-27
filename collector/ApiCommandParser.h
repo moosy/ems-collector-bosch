@@ -49,6 +49,8 @@ class ApiCommandParser : public boost::noncopyable
 
     public:
 	static std::string buildRecordResponse(const EmsProto::ErrorRecord *record);
+	static std::string buildRecordResponse(const EmsProto::ErrorRecord2 *record);
+	static std::string buildRecordResponse(const EmsProto::ErrorRecordShort *record);
 	static std::string buildRecordResponse(const EmsProto::ScheduleEntry *entry);
 	static std::string buildRecordResponse(const char *type, const EmsProto::HolidayEntry *entry);
 

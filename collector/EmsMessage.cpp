@@ -293,6 +293,7 @@ EmsMessage::handle()
 	case EmsProto::addressUBA2:
 	    /* BOSCH UBA message */
 	    switch (getType()) {
+                case 0x15: parseUBA2MaintenanceSettingsMessage(); handled = true; break;
 		case 0xd1: parseUBA2OutdoorMessage(); handled = true; break;
                 case 0xe4: parseUBA2MonitorMessage(); handled = true; break;
                 case 0xe5: parseUBA2MonitorMessage2(); handled = true; break;
@@ -368,6 +369,9 @@ void
 EmsMessage::parseUI800SystemParameterMessage()
 {
     parseNumeric(10, 1, 1, EmsValue::MinTemp, EmsValue::RC);
+    parseEnum(9, EmsValue::GebaeudeArt, EmsValue::RC);
+    parseBool(8, 1, EmsValue::ATDaempfung, EmsValue::RC);
+
 }
 
 
@@ -376,14 +380,30 @@ EmsMessage::parseUI800HKParameterMessage()
 {
     parseNumeric(2, 1, 1, EmsValue::RaumOffset, EmsValue::HK1);
     parseNumeric(5, 1, 1, EmsValue::AuslegungsTemp, EmsValue::HK1);
+    parseNumeric(6, 1, 1, EmsValue::SchwelleSommerWinter, EmsValue::HK1);
+    parseEnum(7, EmsValue::Sommerbetriebsart, EmsValue::HK1);
+    
 }
 
+
+void
+EmsMessage::parseUBA2MaintenanceSettingsMessage()
+{
+    parseEnum(0, EmsValue::Wartungsmeldungen, EmsValue::Kessel);
+    parseInteger(1, 1, EmsValue::HektoStundenVorWartung, EmsValue::Kessel);
+    parseInteger(5, 1, EmsValue::MonateVorWartung, EmsValue::Kessel);
+    if (canAccess(2, sizeof(EmsProto::DateRecord))) {
+        EmsProto::DateRecord *record = (EmsProto::DateRecord *) &m_data.at(2 - m_offset);
+        m_valueHandler(EmsValue(EmsValue::Wartungstermin, EmsValue::Kessel, *record));
+    }
+}
 
 
 
 void
 EmsMessage::parseUBA2ErrorMessage()
 {
+
   parseUI800ErrorMessage();
 
 }
@@ -440,12 +460,18 @@ EmsMessage::parseUI800HKStatusData()
 {
   parseNumeric(41, 2, 1, EmsValue::BoostRemainingMins, EmsValue::HK1);
   parseEnum(10, EmsValue::Betriebszustand, EmsValue::HK1);
-  
+  parseBool(2, 4, EmsValue::Sommerbetrieb, EmsValue::HK1);
+    
 }
 
 void
 EmsMessage::parseUI800ErrorMessage()
 {
+   // Hack: Fehlercode ist immer %c%d%d, und jede Ziffer ist Hex 0x3?, dh Bit 4 gesetzt.
+   if ( m_data[0]  == 0x08 )  parseBool(7, 4, EmsValue::Stoerung, EmsValue::Kessel);
+   if ( m_data[0]  == 0x10 )  parseBool(7, 4, EmsValue::Stoerung, EmsValue::RC);
+
+
     bool errorsfound = false;
     
     for (int i=0; i<3; i++){
@@ -474,6 +500,7 @@ EmsMessage::parseUI800ErrorMessage()
                 m_valueHandler(EmsValue(EmsValue::StoerungsNummer, EmsValue::None, "0" ));
 
     }
+    
     
 
 }
@@ -504,7 +531,7 @@ EmsMessage::parseUBA2MonitorMessage()
     }
 
     if (canAccess(19, 2)) {
-	int bakt = ( (m_data[19] << 8 | m_data[20]) > 0 );
+	int bakt = ( (m_data[19] << 8 | m_data[20]) > 5 );
 //
         m_valueHandler(EmsValue(EmsValue::FlammeAktiv, EmsValue::None, bakt, 0 ));
 	

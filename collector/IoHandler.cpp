@@ -178,7 +178,8 @@ printDescriptive(std::ostream& stream, const EmsValue& value)
 	{ EmsValue::AntipendelZeit, "Antipendelzeit" },
 	{ EmsValue::NachlaufZeit, "Nachlaufzeit" },
 	{ EmsValue::DesinfektionStunde, "Thermische Desinfektion Stunde" },
-	{ EmsValue::HektoStundenVorWartung, "Wartungsintervall in 100h" },
+	{ EmsValue::HektoStundenVorWartung, "Wartungsintervall in 100h Brennerlaufzeit" },
+	{ EmsValue::MonateVorWartung, "Wartungsintervall in Monaten Laufzeit" },
 	{ EmsValue::PausenZeit, "restl. Pausenzeit" },
 	{ EmsValue::PartyZeit, "restl. Partyzeit" },
 
@@ -195,6 +196,7 @@ printDescriptive(std::ostream& stream, const EmsValue& value)
 	{ EmsValue::WarmwasserTempOK, "WW-Temperatur OK" },
 	{ EmsValue::Tagbetrieb, "Tagbetrieb" },
 	{ EmsValue::Sommerbetrieb, "Sommerbetrieb" },
+	{ EmsValue::Sommerbetriebsart, "Sommerbetriebsart" },
 	{ EmsValue::Ausschaltoptimierung, "Ausschaltoptimierung" },
 	{ EmsValue::Einschaltoptimierung, "Einschaltoptimierung" },
 	{ EmsValue::Estrichtrocknung, "Estrichtrocknung" },
@@ -234,6 +236,7 @@ printDescriptive(std::ostream& stream, const EmsValue& value)
 
 	{ EmsValue::HKKennlinie, "Kennlinie" },
 	{ EmsValue::Fehler, "Fehler" },
+	{ EmsValue::Stoerung, "Stoerung" },
 	{ EmsValue::SystemZeit, "Systemzeit" },
 	{ EmsValue::Wartungstermin, "Wartungstermin" },
 
@@ -326,8 +329,9 @@ printDescriptive(std::ostream& stream, const EmsValue& value)
 
     static const std::map<uint8_t, const char *> MAINTENANCEMESSAGESMAPPING = {
 	{ 0, "keine" },
-	{ 1, "nach Betriebsstunden" },
-	{ 2, "nach Datum" }
+	{ 1, "nach Brennerstunden" },
+	{ 2, "nach Datum" },
+	{ 3, "nach Betriebsmonaten" }
     };
 
     static const std::map<uint8_t, const char *> MAINTENANCENEEDEDMAPPING = {
@@ -355,6 +359,10 @@ printDescriptive(std::ostream& stream, const EmsValue& value)
     static const std::map<uint8_t, const char *> HKOPMODEMAPPING = {
 	{ 0, "aus" }, { 1, "durchheizen" }, { 2, "Automatik" }
     };
+
+    static const std::map<uint8_t, const char *> HKSUMMEROPMODEMAPPING = {
+	{ 1, "Automatik" }, { 2, "heizen" }
+    };
     
     static const std::map<uint8_t, const char *> HKOPSTATEMAPPING = {
         { 0, "aus" }, { 1, "abgesenkt" }, { 2, "manuell" }, { 3, "normal" }, { 6, "boost" }
@@ -371,7 +379,7 @@ printDescriptive(std::ostream& stream, const EmsValue& value)
     
 
     static const std::map<uint8_t, const char *> BUILDINGTYPEMAPPING = {
-	{ 0, "leicht" }, { 1, "mittel" }, { 2, "schwer" }
+	{ 1, "leicht" }, { 2, "mittel" }, { 3, "schwer" }
     };
 
     static const std::map<uint8_t, const char *> HEATINGTYPEMAPPING = {
@@ -445,6 +453,8 @@ printDescriptive(std::ostream& stream, const EmsValue& value)
 		case EmsValue::Schaltpunkte: map = &ZIRKSPMAPPING; break;
 		case EmsValue::Wartungsmeldungen: map = &MAINTENANCEMESSAGESMAPPING; break;
 		case EmsValue::WartungFaellig: map = &MAINTENANCENEEDEDMAPPING; break;
+     	        case EmsValue::Sommerbetriebsart: map = &HKSUMMEROPMODEMAPPING; break;
+     	        
                 case EmsValue::Betriebsart:
                     if (value.isForHK())                      { map = &HKOPMODEMAPPING; } else
                     if (value.getSubType() == EmsValue::WW)   { map = &WWOPMODEMAPPING;}  else

@@ -73,6 +73,21 @@ class EmsProto {
 	} ErrorRecord;
 
 	typedef struct {
+	    uint8_t source;
+	    uint8_t pad1[4];
+	    uint8_t errorAscii[3];
+	    uint16_t code_be16;
+	    DateTimeRecord start;
+	    DateTimeRecord end;
+	} ErrorRecord2;
+
+	typedef struct {
+	    uint8_t pad[2];
+	    uint8_t errorAscii[3];
+	    uint16_t code_be16;
+	} ErrorRecordShort;
+
+	typedef struct {
 	    uint8_t on : 4;
 	    uint8_t day : 4;
 	    uint8_t time;
@@ -151,6 +166,7 @@ class EmsValue {
 	    WarmwasserBereitungen,
 	    DesinfektionStunde,
 	    HektoStundenVorWartung,
+	    MonateVorWartung,
 	    EinschaltoptimierungsZeit,
 	    AusschaltoptimierungsZeit,
 	    AntipendelZeit,
@@ -171,6 +187,7 @@ class EmsValue {
 	    WarmwasserTempOK,
 	    Tagbetrieb,
 	    Sommerbetrieb,
+	    Sommerbetriebsart,
 	    Ausschaltoptimierung,
 	    Einschaltoptimierung,
 	    Estrichtrocknung,
@@ -354,6 +371,8 @@ class EmsMessage
         void parseUBA2WWMonitorMessage();
         void parseUBA2WWMonitorMessage2();
         void parseUBA2WWParameterMessage();
+        void parseUBA2MaintenanceSettingsMessage();
+
 
         void parseUBA2ErrorMessage();
 

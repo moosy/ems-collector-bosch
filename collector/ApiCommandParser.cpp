@@ -116,15 +116,62 @@ ApiCommandParser::handleRcCommand(std::istream& request)
 
     if (cmd == "help") {
 	output("Available subcommands:\n"
+	       "requestdata\n"
+	       "geterrors\n"
 	       "mintemperature <temp>\n"
+               "buildingtype [light|medium|heavy]\n"
+               "outdoortempdamping [on|off]\n"
 	       "getcontactinfo\n"
 	       "setcontactinfo 1|2|3 <text>\n"
 		"settime YYYY-MM-DD HH:MM:SS\n"
 		"OK");
 	return Ok;
+
+    } else if (cmd == "requestdata") {
+        startRequest(EmsProto::addressUI800, 0x0140, 0, 46, true, true);
+        startRequest(EmsProto::addressUI800, 0x00bf, 0, 20 ,true);
+        startRequest(EmsProto::addressUBA2, 0x00bf, 0, 20 ,true);
+        return Ok;
+        
+	
+    } else if (cmd == "activeerrors") {
+        startRequest(EmsProto::addressUI800, 0x00bf, 0, 20 ,true);
+        return Ok;
+
+    } else if (cmd == "geterrors") {
+        startRequest(EmsProto::addressUI800, 0x00c0, 0, 10 * sizeof(EmsProto::ErrorRecord2),true);
+        return Ok;
 	
     } else if (cmd == "mintemperature") {
         return handleSingleByteValue(request, EmsProto::addressUI800, 0x0140, 10, 1, -30, 0);
+
+    } else if (cmd == "buildingtype") {
+        std::string ns;
+        uint8_t data;
+
+        request >> ns;
+
+        if (ns == "light")       data = 1;
+        else if (ns == "medium") data = 2;
+        else if (ns == "heavy")  data = 3;
+        else return InvalidArgs;
+
+        sendCommand(EmsProto::addressUI800, 0x0140, 9, &data, 1);
+        return Ok;
+    } else if (cmd == "outdoortempdamping") {
+        uint8_t data;
+        std::string mode;
+
+        request >> mode;
+
+        if (mode == "on")       data = 0xff;
+        else if (mode == "off") data = 0x00;
+        else return InvalidArgs;
+
+        sendCommand(EmsProto::addressUI800, 0x0140, 8, &data, 1);
+        return Ok;
+        
+        
 	
     } else if (cmd == "settime") {
 	std::locale prevLocale = request.imbue(std::locale(std::locale::classic(),
@@ -237,10 +284,91 @@ ApiCommandParser::handleUbaCommand(std::istream& request)
 
     if (cmd == "help") {
 	output("Available subcommands:\n"
+	        "geterrors\n"
+                "schedulemaintenance off | byhours <burnerhours / 100> | bydate YYYY-MM-DD | bymonths <uptime>\n"
+                "checkmaintenanceneeded\n"
+                "resetmaintenanceindicator\n"
+                "unlockfault\n"
 	        "testmode <on|off>\n"
 	        "teststate <burnerpct> <fanpct> <pumppct> <3way012> <zirkpump01> <ignition01> <ionisator01>\n"
 		"OK");
 	return Ok;
+	
+    } else if (cmd == "activeerrors") {
+        startRequest(EmsProto::addressUBA2, 0x00bf, 0, 20 ,true);
+        return Ok;
+	
+	
+    } else if (cmd == "geterrors") {
+        startRequest(EmsProto::addressUBA2, 0x00c2, 0, 10 * sizeof(EmsProto::ErrorRecord2),true);
+        return Ok;
+
+
+    } else if (cmd == "schedulemaintenance") {
+        std::string kind;
+        uint8_t data[6] = { 0, 60, 1, 1, 50, 12 };
+
+        request >> kind;
+        if (kind == "bydate") {
+            std::string due;
+            EmsProto::HolidayEntry dueDate;
+
+            request >> due;
+            if (!request || !parseHolidayEntry(due, &dueDate)) {
+                return InvalidArgs;
+            }
+
+            data[0] = 2;
+            data[2] = dueDate.day;
+            data[3] = dueDate.month;
+            data[4] = dueDate.year;
+        } else if (kind == "byhours") {
+            uint8_t hours;
+            if (!parseIntParameter(request, hours, 60)) {
+                return InvalidArgs;
+            }
+
+            data[0] = 1;
+            data[1] = hours;
+        } else if (kind == "bymonths") {
+            uint8_t months;
+            if (!parseIntParameter(request, months, 12)) {
+                return InvalidArgs;
+            }
+
+            data[0] = 3;
+            data[5] = months;
+        } else if (kind == "off") {
+            /* initializer is sufficient */
+        } else {
+            return InvalidArgs;
+        }
+
+        sendCommand(EmsProto::addressUBA2, 0x15, 0, data, sizeof(data));
+        return Ok;
+
+    } else if (cmd == "checkmaintenanceneeded") {
+        startRequest(EmsProto::addressUBA2, 0x15, 0, 10);
+        return Ok;
+        
+    } else if (cmd == "resetmaintenanceindicator") {
+        uint8_t data[1];
+        memset(&data, 0, sizeof(data));
+        data[0] = 0xff;
+
+        sendCommand(EmsProto::addressUBA2, 0x05, 8, data, sizeof(data));
+        output("OK");
+        return Ok;
+
+    } else if (cmd == "unlockfault") {
+        uint8_t data[1];
+        memset(&data, 0, sizeof(data));
+        data[0] = 0x5a;
+
+        sendCommand(EmsProto::addressUBA2, 0x05, 0, data, sizeof(data));
+        sendCommand(EmsProto::addressUI800, 0x05, 0, data, sizeof(data));
+        output("OK");
+        return Ok;
 
 
     } else if (cmd == "testmode") {
@@ -430,6 +558,8 @@ ApiCommandParser::handleHkCommand(std::istream& request, uint16_t type)
 	       "daytemperature <temp>\n"
 	       "nighttemperature <temp\n" 
 	       "temporarytemp <temp>|off\n"
+	       "summerwinterthreshold <temp>\n"
+	       "summeropmode auto|heateron\n"	       
 	       "designtemperature <temp>\n"
 	       "roomtemperatureoffset <temp>\n"
 	       "activateboost on|off\n"
@@ -444,15 +574,30 @@ ApiCommandParser::handleHkCommand(std::istream& request, uint16_t type)
         startRequest(EmsProto::addressUI800, 0x01b9, 0, 32, true, true);
         startRequest(EmsProto::addressUI800, 0x01a5, 0, 46, true, true);
         startRequest(EmsProto::addressUI800, 0x01af, 0, 46, true, true);
-        startRequest(EmsProto::addressUI800, 0x0140, 0, 46, true, true);
 
         return Ok;
+
+    } else if (cmd == "summerwinterthreshold") {
+        return handleSingleByteValue(request, EmsProto::addressUI800, 0x01af, 6, 1, 10, 30);
 
     } else if (cmd == "roomtemperatureoffset") {
         return handleSingleByteValue(request, EmsProto::addressUI800, 0x01af, 2, 1, -5, 5);
         
     } else if (cmd == "designtemperature") {
         return handleSingleByteValue(request, EmsProto::addressUI800, 0x01af, 5, 1, 30, 90);
+
+    } else if (cmd == "summeropmode") {
+        uint8_t data;
+        std::string mode;
+
+        request >> mode;
+
+        if (mode == "auto") data = 0x01;
+        else if (mode == "heateron")  data = 0x02;
+        else return InvalidArgs;
+
+        sendCommand(EmsProto::addressUI800, 0x01af, 7 , &data, 1);
+        return Ok;
 
     } else if (cmd == "mode") {
         uint8_t data;
@@ -638,7 +783,7 @@ ApiCommandParser::onIncomingMessage(const EmsMessage& message)
     if (type == 0xff) {
 	m_activeRequest.reset();
 	return offset != 0x04;
-    }
+    }  
 
     if (source != m_requestDestination ||
 	    type != m_requestType      ||
@@ -738,6 +883,43 @@ ApiCommandParser::handleResponse()
             break;
 
 	}
+
+        case 0xbf: /* get errors */ {
+            
+            m_parsePosition = 3;
+            const char *prefix = " ";
+            boost::tribool result = loopOverResponse<EmsProto::ErrorRecordShort>(prefix);
+            return result;
+            break;
+        }
+        
+        
+        case 0xc0: /* get errors history*/ 
+        case 0xc2: /* get errors history*/ {
+            static const char * errorTypes[] = {
+                "R", " ", "U", " ",
+            };
+            const char *prefix = errorTypes[m_requestType - 0xc0];
+            boost::tribool result = loopOverResponse<EmsProto::ErrorRecord2>(prefix);
+            return result;
+            break;
+        }
+
+
+	
+	case 0x0015:  // maintenanceinfo 
+        case 0x0140:  // rc 
+        case 0x01a5:  // hk
+        case 0x01af:  // hk
+        case 0x01b9:  // hk
+        case 0x01f5:  // ww
+        case 0x00ea:  // ww
+        {
+	
+	  return true;
+	  break;
+	  
+	}
 	
 	default:
 	    /* unhandled message */
@@ -817,6 +999,59 @@ ApiCommandParser::buildRecordResponse(const EmsProto::ErrorRecord *record)
 
     return response.str();
 }
+std::string
+ApiCommandParser::buildRecordResponse(const EmsProto::ErrorRecord2 *record)
+{
+    if (record->errorAscii[0] == 0) {
+	/* no error at this position */
+	return "";
+    }
+
+    std::ostringstream response;
+
+    if (record->start.valid) {
+	response << boost::format("%04d-%02d-%02d %02d:%02d")
+		% (2000 + record->start.year) % (unsigned int) record->start.month
+		% (unsigned int) record->start.day % (unsigned int) record->start.hour
+		% (unsigned int) record->start.minute;
+    } else {
+	response  << "xxxx-xx-xx xx:xx";
+    }
+
+    if (record->end.valid) {
+	response << " - " << boost::format("%04d-%02d-%02d %02d:%02d")
+		% (2000 + record->end.year) % (unsigned int) record->end.month
+		% (unsigned int) record->end.day % (unsigned int) record->end.hour
+		% (unsigned int) record->end.minute;
+    } else {
+	response  << " - xxxx-xx-xx xx:xx";
+    }
+
+    response << " ";
+    response << boost::format("%02x %c%c%c %d ")
+	    % (unsigned int) record->source % record->errorAscii[0] % record->errorAscii[1] % record->errorAscii[2]
+	    % BE16_TO_CPU(record->code_be16); // % BE16_TO_CPU(record->durationMinutes_be16);
+
+    return response.str();
+}
+
+std::string
+ApiCommandParser::buildRecordResponse(const EmsProto::ErrorRecordShort *record)
+{
+    if (record->errorAscii[0] == 0) {
+	/* no error at this position */
+	return "";
+    }
+    std::ostringstream response;
+
+    response << boost::format("%c%c%c %d ")
+	    % record->errorAscii[0] % record->errorAscii[1] % record->errorAscii[2]
+	    % BE16_TO_CPU(record->code_be16); 
+
+    return response.str();
+}
+
+
 
 std::string
 ApiCommandParser::buildRecordResponse(const EmsProto::ScheduleEntry *entry)
