@@ -2,3 +2,8 @@ collector/.depend
 collector/*.o
 collector/collectord
 collector/collectord.exe
+collector_backup/
+collector_exp/
+collector_oldboost/
+collector/node_modules/
+collector/oldversion/
