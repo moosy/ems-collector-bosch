@@ -32,7 +32,7 @@
 class MqttAdapter : public boost::noncopyable
 {
     public:
-	MqttAdapter(boost::asio::io_service& ios,
+	MqttAdapter(boost::asio::io_context& ios,
 		    EmsCommandSender *sender,
 		    const std::string& host, const std::string& port,
 		    const std::string& topicPrefix);
@@ -68,13 +68,13 @@ class MqttAdapter : public boost::noncopyable
 	static const unsigned int MaxRetryDelaySeconds = 5 * 60;
 
 	std::shared_ptr<mqtt::callable_overlay<mqtt::client<
-		mqtt::tcp_endpoint<boost::asio::ip::tcp::socket, boost::asio::io_service::strand> > > > m_client;
+		mqtt::tcp_endpoint<boost::asio::ip::tcp::socket, boost::asio::io_context::strand> > > > m_client;
 	EmsCommandSender * m_sender;
-	boost::shared_ptr<EmsCommandClient> m_cmdClient;
+	std::shared_ptr<EmsCommandClient> m_cmdClient;
 	bool m_connected;
 	unsigned int m_retryDelay;
 	std::unique_ptr<ApiCommandParser> m_commandParser;
-	boost::asio::deadline_timer m_retryTimer;
+	boost::asio::steady_timer m_retryTimer;
 	std::string m_topicPrefix;
 };
 
@@ -82,7 +82,7 @@ class MqttAdapter : public boost::noncopyable
 
 class MqttAdapter {
     public:
-	MqttAdapter(boost::asio::io_service& /* ios */,
+	MqttAdapter(boost::asio::io_context& /* ios */,
 		    EmsCommandSender * /* sender */,
 		    const std::string& /* host */, const std::string& /* port */,
 		    const std::string& /* topicPrefix */)

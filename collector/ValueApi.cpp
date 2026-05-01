@@ -37,7 +37,7 @@ ValueApi::getTypeName(EmsValue::Type type)
 	{ EmsValue::ExtraTemp, "extratemperature" },
 	{ EmsValue::ManualTemp, "manualtemperature" },
 	{ EmsValue::TemporaryTemp, "temporarytemperature" },
-	{ EmsValue::BoostTemp, "boosttemperature" },
+	{ EmsValue::BooTemp, "boosttemperature" },
 	{ EmsValue::BoostHours, "boosthours" },
 	{ EmsValue::BoostActive, "boostactive" },
 	{ EmsValue::ExtraActive, "extraactive" },
@@ -232,7 +232,7 @@ ValueApi::formatValue(const EmsValue& value)
     };
 
     static const std::map<uint8_t, const char *> HKOPSTATEMAPPING = {
-	{ 0, "off" }, { 1, "reduced" }, { 2, "manual" }, { 3, "normal" }, { 6, "boost" }
+	{ 0, "off" }, { 1, "reduced" }, { 2, "manual" }, { 3, "normal" }, { 6, "boost" }, { 7, "temporary" }
     };
 
     static const std::map<uint8_t, const char *> ZIRKOPMODEMAPPING = {
@@ -347,7 +347,7 @@ ValueApi::formatValue(const EmsValue& value)
 	}
 	case EmsValue::Error: {
 	    EmsValue::ErrorEntry entry = value.getValue<EmsValue::ErrorEntry>();
-	    std::string formatted = ApiCommandParser::buildRecordResponse(&entry.record);
+	    std::string formatted = ApiCommandParser::buildRecordResponse(&entry.record,0);
 	    if (formatted.empty()) {
 		formatted = "empty";
 	    }

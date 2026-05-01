@@ -199,32 +199,32 @@ EmsMessage::getSendData(bool omitSenderAddress) const
     if (!omitSenderAddress) {
 	data.push_back(ourSenderAddress);
     }
-    
+
     data.push_back(m_dest);
-    
+
     bool isRead = ((m_dest & 0x80) > 0);
-    
+
     data.push_back(m_type);
     data.push_back(m_offset);
-    
+
 
     if (m_type >= 0xf0) {  // EMS plus
 
         if (isRead) { // read command, m_data[0] is the length
-        
+
            data.push_back(m_data[0]);
         }
 
 	data.push_back(m_extType >> 8);
 	data.push_back(m_extType & 0xff);
-	
+
 	if (!isRead){
-	
+
            data.insert(data.end(), m_data.begin(), m_data.end());
 
 	}
     } else { // EMS classic
-    
+
 
       data.insert(data.end(), m_data.begin(), m_data.end());
     }
@@ -233,7 +233,7 @@ EmsMessage::getSendData(bool omitSenderAddress) const
 
     DebugStream& debug = Options::messageDebug();
 
-
+/*
     debug << "EmsMessage DATA COMPOSED: ";
     for (size_t i = 0; i < data.size(); i++) {
           debug << " 0x" << std::hex << std::setw(2)
@@ -241,7 +241,7 @@ EmsMessage::getSendData(bool omitSenderAddress) const
     }
     debug << std::endl;
 
-
+*/
 
 
     return data;
@@ -293,6 +293,7 @@ EmsMessage::handle()
 	case EmsProto::addressUBA2:
 	    /* BOSCH UBA message */
 	    switch (getType()) {
+	        case 0x14: parseUBA2TotalUptimeMessage();  handled = true; break;
                 case 0x15: parseUBA2MaintenanceSettingsMessage(); handled = true; break;
 		case 0xd1: parseUBA2OutdoorMessage(); handled = true; break;
                 case 0xe4: parseUBA2MonitorMessage(); handled = true; break;
@@ -316,12 +317,12 @@ EmsMessage::handle()
 		case 0x01b9: parseUI800HKConfiguration(); handled = true; break;
 		case 0x01a5: parseUI800HKStatusData(); handled = true; break;
 		case 0x01af: parseUI800HKParameterMessage(); handled = true; break;
-		
+
 
 	    }
 	    break;
-    }    
-	    
+    }
+
     if (!handled) {
 	DebugStream& dataDebug = Options::dataDebug();
 	if (dataDebug) {
@@ -382,7 +383,7 @@ EmsMessage::parseUI800HKParameterMessage()
     parseNumeric(5, 1, 1, EmsValue::AuslegungsTemp, EmsValue::HK1);
     parseNumeric(6, 1, 1, EmsValue::SchwelleSommerWinter, EmsValue::HK1);
     parseEnum(7, EmsValue::Sommerbetriebsart, EmsValue::HK1);
-    
+
 }
 
 
@@ -415,6 +416,10 @@ EmsMessage::parseUI800WWConfiguration()
   parseEnum(3, EmsValue::Betriebsart, EmsValue::Zirkulation);
   parseNumeric(10, 1, 1, EmsValue::Extra15Mins, EmsValue::WW);
   parseBool(11, 0, EmsValue::ExtraActive, EmsValue::WW);
+  parseBool(5, 1, EmsValue::Desinfektion, EmsValue::WW);
+  parseEnum(7, EmsValue::DesinfektionTag, EmsValue::WW);
+  parseNumeric(6, 1, 4, EmsValue::DesinfektionStunde, EmsValue::WW);
+
 
 }
 
@@ -443,8 +448,8 @@ EmsMessage::parseUI800HKConfiguration()
   parseNumeric(22, 1, 2, EmsValue::ManualTemp, EmsValue::HK1);
   parseBool(23, 0, EmsValue::BoostActive, EmsValue::HK1);
   parseNumeric(24, 1, 1, EmsValue::BoostHours, EmsValue::HK1);
-  parseNumeric(25, 1, 2, EmsValue::BoostTemp, EmsValue::HK1);
-  
+  parseNumeric(25, 1, 2, EmsValue::BooTemp, EmsValue::HK1,false,&INVALID_TEMPERATURE_VALUES);
+
   parseNumeric(4, 1, 2, EmsValue::NachtTemp, EmsValue::HK1);
   parseNumeric(2, 1, 2, EmsValue::TagTemp, EmsValue::HK1);
 //    parseNumeric(3, 1, 2, EmsValue::UrlaubTemp, subtype);
@@ -461,7 +466,7 @@ EmsMessage::parseUI800HKStatusData()
   parseNumeric(41, 2, 1, EmsValue::BoostRemainingMins, EmsValue::HK1);
   parseEnum(10, EmsValue::Betriebszustand, EmsValue::HK1);
   parseBool(2, 4, EmsValue::Sommerbetrieb, EmsValue::HK1);
-    
+
 }
 
 void
@@ -473,7 +478,7 @@ EmsMessage::parseUI800ErrorMessage()
 
 
     bool errorsfound = false;
-    
+
     for (int i=0; i<3; i++){
 
         if (canAccess(5+i*7, 3)) {
@@ -494,14 +499,14 @@ EmsMessage::parseUI800ErrorMessage()
             }
         }
     }
-    
+
     if (!errorsfound) {
                 m_valueHandler(EmsValue(EmsValue::StoerungsCode, EmsValue::None, "OK" ));
                 m_valueHandler(EmsValue(EmsValue::StoerungsNummer, EmsValue::None, "0" ));
 
     }
-    
-    
+
+
 
 }
 
@@ -527,14 +532,14 @@ EmsMessage::parseUBA2MonitorMessage()
 	ss << std::dec << (m_data[4] << 8 | m_data[5]);
 	m_valueHandler(EmsValue(EmsValue::FehlerCode, EmsValue::None, ss.str()));
         m_valueHandler(EmsValue(EmsValue::ServiceCode, EmsValue::None, "--"));
-	
+
     }
 
     if (canAccess(19, 2)) {
 	int bakt = ( (m_data[19] << 8 | m_data[20]) > 5 );
 //
         m_valueHandler(EmsValue(EmsValue::FlammeAktiv, EmsValue::None, bakt, 0 ));
-	
+
     }
 }
 
@@ -545,15 +550,25 @@ EmsMessage::parseUBA2MonitorMessage2()
 
     parseBool(26, 5, EmsValue::DreiWegeVentilAufWW, EmsValue::None); // 100=WW, 50=Mix, Bit5 = >0
     parseBool(2, 7, EmsValue::ZirkulationAktiv, EmsValue::None);
+    parseInteger(13, 3, EmsValue::BetriebsZeit2, EmsValue::Kessel);
+    parseInteger(10, 3, EmsValue::Brennerstarts, EmsValue::Kessel);
+
 
 }
 
-void 
+void
 EmsMessage::parseUBA2OutdoorMessage()
-{        
+{
     parseTemperature(0, EmsValue::IstTemp, EmsValue::Aussen);
 }
-        
+
+
+void
+EmsMessage::parseUBA2TotalUptimeMessage()
+{
+    parseInteger(0, 3, EmsValue::BetriebsZeit, EmsValue::None);
+}
+
 
 void
 EmsMessage::parseUBA2WWMonitorMessage()
@@ -576,6 +591,7 @@ EmsMessage::parseUBA2WWParameterMessage()
     parseNumeric(11, 1, 1, EmsValue::ZirkProStunde, EmsValue::Zirkulation);
     parseNumeric(16, 1, 1, EmsValue::ExtraTemp, EmsValue::WW);
     parseNumeric(18, 1, 1, EmsValue::ReduzierteTemp, EmsValue::WW);
+    parseNumeric(12, 1, 1, EmsValue::DesinfektionsTemp, EmsValue::WW);
 
 }
 

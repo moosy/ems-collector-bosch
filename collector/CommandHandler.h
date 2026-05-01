@@ -23,7 +23,7 @@
 #include <set>
 #include <boost/asio.hpp>
 #include <boost/bind/bind.hpp>
-#include <boost/enable_shared_from_this.hpp>
+#include <memory>
 #include "ApiCommandParser.h"
 #include "CommandScheduler.h"
 #include "EmsMessage.h"
@@ -31,14 +31,14 @@
 
 class CommandHandler;
 
-class CommandConnection : public boost::enable_shared_from_this<CommandConnection>,
+class CommandConnection : public std::enable_shared_from_this<CommandConnection>,
 			  private boost::noncopyable
 {
     public:
-	typedef boost::shared_ptr<CommandConnection> Ptr;
+	typedef std::shared_ptr<CommandConnection> Ptr;
 
     public:
-	CommandConnection(boost::asio::io_service& ios,
+	CommandConnection(boost::asio::io_context& ios,
 			  EmsCommandSender& sender,
 			  CommandHandler& handler,
 			  ValueCache *cache);
@@ -87,7 +87,7 @@ class CommandConnection : public boost::enable_shared_from_this<CommandConnectio
     private:
 	boost::asio::ip::tcp::socket m_socket;
 	boost::asio::streambuf m_request;
-	boost::shared_ptr<EmsCommandClient> m_commandClient;
+	std::shared_ptr<EmsCommandClient> m_commandClient;
 	ApiCommandParser m_parser;
 	CommandHandler& m_handler;
 };
@@ -95,7 +95,7 @@ class CommandConnection : public boost::enable_shared_from_this<CommandConnectio
 class CommandHandler : private boost::noncopyable
 {
     public:
-	CommandHandler(boost::asio::io_service& ios,
+	CommandHandler(boost::asio::io_context& ios,
 		       EmsCommandSender& sender,
 		       ValueCache *cache,
 		       boost::asio::ip::tcp::endpoint& endpoint);
@@ -111,7 +111,7 @@ class CommandHandler : private boost::noncopyable
 	void startAccepting();
 
     private:
-	boost::asio::io_service& m_ios;
+	boost::asio::io_context& m_ios;
 	EmsCommandSender& m_sender;
 	ValueCache *m_cache;
 	boost::asio::ip::tcp::acceptor m_acceptor;

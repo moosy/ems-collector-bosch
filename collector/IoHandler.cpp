@@ -25,7 +25,7 @@
 #include "Options.h"
 
 IoHandler::IoHandler(ValueCache& cache) :
-    boost::asio::io_service(),
+    boost::asio::io_context(),
     m_active(true),
     m_state(Syncing),
     m_pos(0)
@@ -33,7 +33,7 @@ IoHandler::IoHandler(ValueCache& cache) :
     /* pre-alloc buffer to avoid reallocations */
     m_data.reserve(256);
 
-    m_valueCb = boost::bind(&IoHandler::handleValue, this, boost::placeholders::_1);
+    m_valueCb = [this](const EmsValue& v) { handleValue(v); };
     m_cacheCb = [cache] (EmsValue::Type type, EmsValue::SubType subtype) {
 	return cache.getValue(type, subtype);
     };
@@ -96,7 +96,7 @@ IoHandler::readComplete(const boost::system::error_code& error,
 
 
 		    if ((message.getDestination() | 0x80) == EmsProto::addressPC) {
-                        
+
 			onPcMessageReceived(message);
 		    }
 		}
@@ -138,7 +138,7 @@ printDescriptive(std::ostream& stream, const EmsValue& value)
 	{ EmsValue::ReduzierteTemp, "Reduzierte Wassertemperatur" },
 	{ EmsValue::ManualTemp, "Manuelle Temperatur" },
 	{ EmsValue::TemporaryTemp, "Temporäre Raumtemperatur" },
-	{ EmsValue::BoostTemp, "Boosttemperatur" },
+	{ EmsValue::BooTemp, "Boosttemperatur" },
 	{ EmsValue::ZirkProStunde, "Zirkulationen pro Stunde" },
 	{ EmsValue::UrlaubTemp, "Urlaubstemperatur" },
 	{ EmsValue::RaumSollTemp, "Raum-Solltemperatur" },
@@ -271,7 +271,7 @@ printDescriptive(std::ostream& stream, const EmsValue& value)
 	{ EmsValue::TagTemp, "°C" },
 	{ EmsValue::ManualTemp, "°C" },
 	{ EmsValue::TemporaryTemp, "°C" },
-	{ EmsValue::BoostTemp, "°C" },
+	{ EmsValue::BooTemp, "°C" },
 	{ EmsValue::BoostHours, "h" },
 	{ EmsValue::NachtTemp, "°C" },
 	{ EmsValue::UrlaubTemp, "°C" },
@@ -363,12 +363,12 @@ printDescriptive(std::ostream& stream, const EmsValue& value)
     static const std::map<uint8_t, const char *> HKSUMMEROPMODEMAPPING = {
 	{ 1, "Automatik" }, { 2, "heizen" }
     };
-    
+
     static const std::map<uint8_t, const char *> HKOPSTATEMAPPING = {
-        { 0, "aus" }, { 1, "abgesenkt" }, { 2, "manuell" }, { 3, "normal" }, { 6, "boost" }
+        { 0, "aus" }, { 1, "abgesenkt" }, { 2, "manuell" }, { 3, "normal" }, { 6, "boost" }, { 7, "temporäer" }
     };
-    
-    
+
+
     static const std::map<uint8_t, const char *> WWOPMODEMAPPING = {
         { 0, "aus" }, { 1, "Eco" }, { 2, "Komfort" }, { 3, "wie Heizung" }, { 4, "Automatik" }
     };
@@ -376,7 +376,7 @@ printDescriptive(std::ostream& stream, const EmsValue& value)
     static const std::map<uint8_t, const char *> ZIRKOPMODEMAPPING = {
         { 0, "aus" }, { 1, "ein" }, { 2, "wie Warmwasser" }, { 3, "Automatik" }
     };
-    
+
 
     static const std::map<uint8_t, const char *> BUILDINGTYPEMAPPING = {
 	{ 1, "leicht" }, { 2, "mittel" }, { 3, "schwer" }
@@ -454,7 +454,7 @@ printDescriptive(std::ostream& stream, const EmsValue& value)
 		case EmsValue::Wartungsmeldungen: map = &MAINTENANCEMESSAGESMAPPING; break;
 		case EmsValue::WartungFaellig: map = &MAINTENANCENEEDEDMAPPING; break;
      	        case EmsValue::Sommerbetriebsart: map = &HKSUMMEROPMODEMAPPING; break;
-     	        
+
                 case EmsValue::Betriebsart:
                     if (value.isForHK())                      { map = &HKOPMODEMAPPING; } else
                     if (value.getSubType() == EmsValue::WW)   { map = &WWOPMODEMAPPING;}  else

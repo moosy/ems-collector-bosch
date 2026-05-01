@@ -7,3 +7,6 @@ collector_exp/
 collector_oldboost/
 collector/node_modules/
 collector/oldversion/
+collector/oldversion
+collector/package-lock.json
+collector/package.json

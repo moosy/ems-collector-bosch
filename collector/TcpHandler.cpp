@@ -26,19 +26,18 @@ TcpHandler::TcpHandler(const std::string& host,
 		       const std::string& port,
 		       ValueCache& cache) :
     IoHandler(cache),
-    EmsCommandSender((boost::asio::io_service&) *this),
+    EmsCommandSender((boost::asio::io_context&) *this),
     m_socket(*this),
     m_watchdog(*this)
 {
     boost::system::error_code error;
     boost::asio::ip::tcp::resolver resolver(*this);
-    boost::asio::ip::tcp::resolver::query query(host, port);
-    boost::asio::ip::tcp::resolver::iterator endpoint = resolver.resolve(query, error);
-
+    auto endpoints = resolver.resolve(host, port, error);
     if (error) {
-	doClose(error);
+        doClose(error);
     } else {
-	m_socket.async_connect(*endpoint, [this] (const boost::system::error_code& error) {
+        boost::asio::async_connect(m_socket, endpoints, [this] (const boost::system::error_code& error, const boost::asio::ip::tcp::endpoint&) {
+
 	    if (error) {
 		doClose(error);
 	    } else {
@@ -59,7 +58,7 @@ TcpHandler::~TcpHandler()
 void
 TcpHandler::resetWatchdog()
 {
-    m_watchdog.expires_from_now(boost::posix_time::minutes(2));
+    m_watchdog.expires_after(std::chrono::minutes(2));
     m_watchdog.async_wait([this] (const boost::system::error_code& error) {
 	if (error != boost::asio::error::operation_aborted) {
 	    doClose(error);

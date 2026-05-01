@@ -1,6 +1,9 @@
 ems-collector BOSCH EMS 2 version
 =================================
 
+UPDATE 02.05.2026
+Added compatibility to boost 1.90 and newer.
+
 ATTENTION: This version has implemented changes to the protocol
 which makes it INCOMPATIBLE with older Buderus EMS or EMS plus systems!
 

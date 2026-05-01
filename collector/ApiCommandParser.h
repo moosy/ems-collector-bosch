@@ -38,20 +38,21 @@ class ApiCommandParser : public boost::noncopyable
 
     public:
 	ApiCommandParser(EmsCommandSender& sender,
-			 const boost::shared_ptr<EmsCommandClient>& client,
+			 const std::shared_ptr<EmsCommandClient>& client,
 			 ValueCache *cache,
 			 OutputCallback outputCb,
-			 boost::asio::io_service& ios);
+			 boost::asio::io_context& ios);
 
 	CommandResult parse(std::istream& request);
 	boost::tribool onIncomingMessage(const EmsMessage& message);
 	bool onTimeout();
 
     public:
-	static std::string buildRecordResponse(const EmsProto::ErrorRecord *record);
-	static std::string buildRecordResponse(const EmsProto::ErrorRecord2 *record);
-	static std::string buildRecordResponse(const EmsProto::ErrorRecordShort *record);
-	static std::string buildRecordResponse(const EmsProto::ScheduleEntry *entry);
+	static std::string buildRecordResponse(const EmsProto::ErrorRecord *record, uint8_t position);
+	static std::string buildRecordResponse(const EmsProto::ErrorRecord2 *record, uint8_t position);
+	static std::string buildRecordResponse(const EmsProto::ErrorRecordShort *record, uint8_t position);
+	static std::string buildRecordResponse(const EmsProto::ScheduleEntry *entry, uint8_t position);
+	static std::string buildRecordResponse(const EmsProto::ScheduleEntry2 *entry, uint8_t position);
 	static std::string buildRecordResponse(const char *type, const EmsProto::HolidayEntry *entry);
 
     private:
@@ -71,7 +72,7 @@ class ApiCommandParser : public boost::noncopyable
 
 	template<typename T> boost::tribool loopOverResponse(const char *prefix = "");
 
-	bool parseScheduleEntry(std::istream& request, EmsProto::ScheduleEntry *entry);
+	bool parseScheduleEntry(std::istream& request, EmsProto::ScheduleEntry2 *entry);
 	bool parseHolidayEntry(const std::string& string, EmsProto::HolidayEntry *entry);
 
 	boost::tribool handleResponse();
@@ -98,12 +99,12 @@ class ApiCommandParser : public boost::noncopyable
 	static const unsigned int MaxRequestRetries = 5;
 
 	EmsCommandSender& m_sender;
-	boost::shared_ptr<EmsCommandClient> m_client;
+	std::shared_ptr<EmsCommandClient> m_client;
 	ValueCache *m_cache;
 	OutputCallback m_outputCb;
 	unsigned int m_responseCounter;
 	unsigned int m_retriesLeft;
-	boost::shared_ptr<EmsMessage> m_activeRequest;
+	std::shared_ptr<EmsMessage> m_activeRequest;
 	std::vector<uint8_t> m_requestResponse;
 	size_t m_requestOffset;
 	size_t m_requestLength;
@@ -111,7 +112,7 @@ class ApiCommandParser : public boost::noncopyable
 	uint16_t m_requestType;
 	size_t m_parsePosition;
 	bool m_outputRawData;
-	boost::asio::deadline_timer testModeRepeater;
+	boost::asio::steady_timer testModeRepeater;
 };
 
 #endif /* __APICOMMANDPARSER_H__ */

@@ -21,7 +21,7 @@
 #include "DataHandler.h"
 #include "ValueApi.h"
 
-DataHandler::DataHandler(boost::asio::io_service& ios,
+DataHandler::DataHandler(boost::asio::io_context& ios,
 			 boost::asio::ip::tcp::endpoint& endpoint) :
     m_ios(ios),
     m_acceptor(ios, endpoint)
@@ -82,7 +82,7 @@ DataHandler::startAccepting()
 }
 
 
-DataConnection::DataConnection(boost::asio::io_service& ios, DataHandler& handler) :
+DataConnection::DataConnection(boost::asio::io_context& ios, DataHandler& handler) :
     m_socket(ios),
     m_handler(handler)
 {

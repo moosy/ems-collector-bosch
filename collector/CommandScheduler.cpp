@@ -25,7 +25,7 @@ void
 EmsCommandSender::handlePcMessage(const EmsMessage& message)
 
 {
-    m_lastCommTimes[message.getSource()] = boost::posix_time::microsec_clock::universal_time();
+    m_lastCommTimes[message.getSource()] = std::chrono::steady_clock::now();
     m_responseTimeout.cancel();
     if (m_currentClient) {
 	m_currentClient->onIncomingMessage(message);
@@ -47,36 +47,36 @@ void
 EmsCommandSender::scheduleResponseTimeout(bool fakeAnswer)
 {
     if (fakeAnswer){
-        m_responseTimeout.expires_from_now(boost::posix_time::milliseconds(200));
-    
+        m_responseTimeout.expires_after(std::chrono::milliseconds(1000));
+
         m_responseTimeout.async_wait([this] (const boost::system::error_code& error) {
             if (error != boost::asio::error::operation_aborted) {
                 if (m_currentClient) {
 
                     std::vector<uint8_t> fakeData(0x00, 0x01);
                     EmsMessage fake(0x0b, 0xff, 0x01, fakeData, false);
-                    handlePcMessage(fake);	        
-                    
+                    handlePcMessage(fake);
+
                 }
                 continueWithNextRequest();
             }
         });
-        
+
     } else {
 
-        m_responseTimeout.expires_from_now(boost::posix_time::milliseconds(RequestTimeout));
-    
+        m_responseTimeout.expires_after(std::chrono::milliseconds(RequestTimeout));
+
         m_responseTimeout.async_wait([this] (const boost::system::error_code& error) {
             if (error != boost::asio::error::operation_aborted) {
                 if (m_currentClient) {
 
-                    m_currentClient->onTimeout();  
+                    m_currentClient->onTimeout();
 
                 }
                 continueWithNextRequest();
             }
         });
-        
+
     }
 }
 
@@ -87,11 +87,11 @@ EmsCommandSender::sendMessage(const MessagePtr& message)
     bool scheduled = false;
 
     if (timeIter != m_lastCommTimes.end()) {
-	boost::posix_time::ptime now(boost::posix_time::microsec_clock::universal_time());
-	boost::posix_time::time_duration diff = now - timeIter->second;
 
-	if (diff.total_milliseconds() <= MinDistanceBetweenRequests) {
-	    m_sendTimer.expires_at(timeIter->second + boost::posix_time::milliseconds(MinDistanceBetweenRequests));
+        auto now = std::chrono::steady_clock::now();
+        auto diff = now - timeIter->second;
+        if (std::chrono::duration_cast<std::chrono::milliseconds>(diff).count() <= MinDistanceBetweenRequests) {
+            m_sendTimer.expires_at(timeIter->second + std::chrono::milliseconds(MinDistanceBetweenRequests));
 	    m_sendTimer.async_wait(boost::bind(&EmsCommandSender::doSendMessage, this, *message));
 	    scheduled = true;
 	}
@@ -108,8 +108,8 @@ EmsCommandSender::doSendMessage(const EmsMessage& message)
 
     sendMessageImpl(message);
     scheduleResponseTimeout(fakeAnswer);
-    
-    m_lastCommTimes[message.getDestination()] = boost::posix_time::microsec_clock::universal_time();
+
+    m_lastCommTimes[message.getDestination()] = std::chrono::steady_clock::now();
 }
 
 void

@@ -23,7 +23,7 @@
 #include "Options.h"
 #include "ValueApi.h"
 
-MqttAdapter::MqttAdapter(boost::asio::io_service& ios,
+MqttAdapter::MqttAdapter(boost::asio::io_context& ios,
 			 EmsCommandSender *sender,
 			 const std::string& host, const std::string& port,
 			 const std::string& topicPrefix) :

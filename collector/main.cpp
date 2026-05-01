@@ -57,7 +57,7 @@ getHandler(const std::string& target, ValueCache& cache)
 }
 
 static MqttAdapter *
-getMqttAdapter(boost::asio::io_service& ios, EmsCommandSender *sender, const std::string& target)
+getMqttAdapter(boost::asio::io_context& ios, EmsCommandSender *sender, const std::string& target)
 {
     size_t pos = target.find(':');
     if (pos != std::string::npos) {
@@ -79,7 +79,7 @@ fillSignalSet(boost::asio::signal_set& signals) {
 }
 
 static void
-stopHandler(boost::asio::io_service *ios, bool *running)
+stopHandler(boost::asio::io_context *ios, bool *running)
 {
     *running = false;
     ios->stop();
@@ -182,10 +182,10 @@ int main(int argc, char *argv[])
 
 	    /* wait some time until retrying */
 	    if (running) {
-		boost::asio::io_service ios;
-		boost::asio::deadline_timer timeout(ios);
+		boost::asio::io_context ios;
+		boost::asio::steady_timer timeout(ios);
 		boost::asio::signal_set waitSignals(ios);
-		timeout.expires_from_now(boost::posix_time::seconds(10));
+		timeout.expires_after(std::chrono::seconds(10));
 		timeout.async_wait([&] (const boost::system::error_code&) {
 		    ios.stop();
 		});

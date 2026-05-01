@@ -21,7 +21,7 @@
 #include <iostream>
 #include "CommandHandler.h"
 
-CommandHandler::CommandHandler(boost::asio::io_service& ios,
+CommandHandler::CommandHandler(boost::asio::io_context& ios,
 			       EmsCommandSender& sender,
 			       ValueCache *cache,
 			       boost::asio::ip::tcp::endpoint& endpoint) :
@@ -80,7 +80,7 @@ CommandHandler::startAccepting()
 }
 
 
-CommandConnection::CommandConnection(boost::asio::io_service& ios,
+CommandConnection::CommandConnection(boost::asio::io_context& ios,
 				     EmsCommandSender& sender,
 				     CommandHandler& handler,
 				     ValueCache *cache) :

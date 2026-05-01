@@ -23,21 +23,21 @@
 #include <set>
 #include <boost/asio.hpp>
 #include <boost/bind/bind.hpp>
-#include <boost/enable_shared_from_this.hpp>
+#include <memory>
 #include <boost/shared_ptr.hpp>
 #include "EmsMessage.h"
 #include "Noncopyable.h"
 
 class DataHandler;
 
-class DataConnection : public boost::enable_shared_from_this<DataConnection>,
+class DataConnection : public std::enable_shared_from_this<DataConnection>,
 		       private boost::noncopyable
 {
     public:
-	typedef boost::shared_ptr<DataConnection> Ptr;
+	typedef std::shared_ptr<DataConnection> Ptr;
 
     public:
-	DataConnection(boost::asio::io_service& ios, DataHandler& handler);
+	DataConnection(boost::asio::io_context& ios, DataHandler& handler);
 	~DataConnection();
 
     public:
@@ -65,7 +65,7 @@ class DataConnection : public boost::enable_shared_from_this<DataConnection>,
 class DataHandler : private boost::noncopyable
 {
     public:
-	DataHandler(boost::asio::io_service& ios,
+	DataHandler(boost::asio::io_context& ios,
 		    boost::asio::ip::tcp::endpoint& endpoint);
 	~DataHandler();
 
@@ -80,7 +80,7 @@ class DataHandler : private boost::noncopyable
 	void startAccepting();
 
     private:
-	boost::asio::io_service& m_ios;
+	boost::asio::io_context& m_ios;
 	boost::asio::ip::tcp::acceptor m_acceptor;
 	std::set<DataConnection::Ptr> m_connections;
 };

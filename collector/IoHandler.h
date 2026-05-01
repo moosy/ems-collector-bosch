@@ -27,7 +27,7 @@
 #include "EmsMessage.h"
 #include "ValueCache.h"
 
-class IoHandler : public boost::asio::io_service
+class IoHandler : public boost::asio::io_context
 {
     public:
 	typedef std::function<void (const EmsValue& value)> ValueCallback;
@@ -36,8 +36,7 @@ class IoHandler : public boost::asio::io_service
 	IoHandler(ValueCache& cache);
 
 	void close() {
-	    post(boost::bind(&IoHandler::doClose, this,
-			     boost::system::error_code()));
+            boost::asio::post(*this, [this]() { doClose(boost::system::error_code()); });
 	}
 
 	bool active() {

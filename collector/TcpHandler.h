@@ -53,7 +53,7 @@ class TcpHandler : public IoHandler, public EmsCommandSender
 
     private:
 	boost::asio::ip::tcp::socket m_socket;
-	boost::asio::deadline_timer m_watchdog;
+	boost::asio::steady_timer m_watchdog;
 };
 
 #endif /* __TCPHANDLER_H__ */

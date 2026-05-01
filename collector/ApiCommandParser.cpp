@@ -17,21 +17,22 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <boost/date_time.hpp>
+#include <iomanip>
 #include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/numeric/conversion/cast.hpp>
 #include "ApiCommandParser.h"
 #include "ByteOrder.h"
 #include "Options.h"
 
 /* version of our command API */
-#define API_VERSION "2023070601"
+#define API_VERSION "2023072801"
 
 ApiCommandParser::ApiCommandParser(EmsCommandSender& sender,
-				   const boost::shared_ptr<EmsCommandClient>& client,
+				   const std::shared_ptr<EmsCommandClient>& client,
 				   ValueCache *cache,
 				   OutputCallback outputCb,
-				   boost::asio::io_service& ios) :
+				   boost::asio::io_context& ios) :
     m_sender(sender),
     m_client(client),
     m_cache(cache),
@@ -40,7 +41,7 @@ ApiCommandParser::ApiCommandParser(EmsCommandSender& sender,
     m_parsePosition(0),
     m_outputRawData(false),
     testModeRepeater(ios)
-    
+
 {
 }
 
@@ -101,7 +102,7 @@ ApiCommandParser::parse(std::istream& request)
 	return handleCacheCommand(request);
     } else if (category == "getversion") {
 	output("collector version: " API_VERSION);
-	startRequest(EmsProto::addressUBA2, 0x02, 0, 3);
+	startRequest(EmsProto::addressUBA2, 0x02, 0, 5);
 	return Ok;
     }
 
@@ -129,11 +130,11 @@ ApiCommandParser::handleRcCommand(std::istream& request)
 
     } else if (cmd == "requestdata") {
         startRequest(EmsProto::addressUI800, 0x0140, 0, 46, true, true);
-        startRequest(EmsProto::addressUI800, 0x00bf, 0, 20 ,true);
-        startRequest(EmsProto::addressUBA2, 0x00bf, 0, 20 ,true);
+        startRequest(EmsProto::addressUI800, 0x00bf, 0, 20 ,true, true);
+        startRequest(EmsProto::addressUBA2, 0x00bf, 0, 20 ,true, true);
         return Ok;
-        
-	
+
+
     } else if (cmd == "activeerrors") {
         startRequest(EmsProto::addressUI800, 0x00bf, 0, 20 ,true);
         return Ok;
@@ -141,7 +142,7 @@ ApiCommandParser::handleRcCommand(std::istream& request)
     } else if (cmd == "geterrors") {
         startRequest(EmsProto::addressUI800, 0x00c0, 0, 10 * sizeof(EmsProto::ErrorRecord2),true);
         return Ok;
-	
+
     } else if (cmd == "mintemperature") {
         return handleSingleByteValue(request, EmsProto::addressUI800, 0x0140, 10, 1, -30, 0);
 
@@ -170,45 +171,28 @@ ApiCommandParser::handleRcCommand(std::istream& request)
 
         sendCommand(EmsProto::addressUI800, 0x0140, 8, &data, 1);
         return Ok;
-        
-        
-	
+
+
     } else if (cmd == "settime") {
-	std::locale prevLocale = request.imbue(std::locale(std::locale::classic(),
-		new boost::local_time::local_time_input_facet("%Y-%m-%d %H:%M:%S")));
-	boost::posix_time::ptime time;
 
-	request >> time;
-	request.imbue(prevLocale);
+        std::tm tm = {};
+        request >> std::get_time(&tm, "%Y-%m-%d %H:%M:%S");
+        if (request.fail()) {
+            return InvalidArgs;
+        }
+        EmsProto::SystemTimeRecord record;
+        memset(&record, 0, sizeof(record));
+        record.common.year   = tm.tm_year + 1900 - 2000;
+        record.common.month  = tm.tm_mon + 1;
+        record.common.day    = tm.tm_mday;
+        record.common.hour   = tm.tm_hour;
+        record.common.minute = tm.tm_min;
+        record.second        = tm.tm_sec;
+        record.dayOfWeek = (tm.tm_wday == 0) ? 6 : tm.tm_wday - 1;
+        sendCommand(EmsProto::addressUI800, 0x06, 0, (uint8_t *) &record, sizeof(record));
+        return Ok;
 
-	if (!request) {
-	    return InvalidArgs;
-	}
 
-	boost::gregorian::date date = time.date();
-	boost::posix_time::time_duration timeOfDay = time.time_of_day();
-
-	EmsProto::SystemTimeRecord record;
-	memset(&record, 0, sizeof(record));
-
-	record.common.year = date.year() - 2000;
-	record.common.month = date.month();
-	record.common.day = date.day();
-	record.common.hour = timeOfDay.hours();
-	record.common.minute = timeOfDay.minutes();
-	record.second = timeOfDay.seconds();
-	switch (date.day_of_week()) {
-	    case boost::date_time::Monday: record.dayOfWeek = 0; break;
-	    case boost::date_time::Tuesday: record.dayOfWeek = 1; break;
-	    case boost::date_time::Wednesday: record.dayOfWeek = 2; break;
-	    case boost::date_time::Thursday: record.dayOfWeek = 3; break;
-	    case boost::date_time::Friday: record.dayOfWeek = 4; break;
-	    case boost::date_time::Saturday: record.dayOfWeek = 5; break;
-	    case boost::date_time::Sunday: record.dayOfWeek = 6; break;
-	}
-
-	sendCommand(EmsProto::addressUI800, 0x06, 0, (uint8_t *) &record, sizeof(record));
-	return Ok;
     } else if (cmd == "getcontactinfo") {
         startRequest(EmsProto::addressUI800, 0x0137, 0, 120);
         return Ok;
@@ -234,19 +218,19 @@ ApiCommandParser::handleRcCommand(std::istream& request)
         text = buffer.str();  // Special Chars have more than one byte, so no cropping here...
 
 
-        std::wstring_convert<std::codecvt_utf8_utf16<char16_t>,char16_t> convert; 
+        std::wstring_convert<std::codecvt_utf8_utf16<char16_t>,char16_t> convert;
         std::u16string wtxt = convert.from_bytes(text).substr(0,20); // ...we crop the widestring instead
 
 
         uint8_t buf2[20];
-       
+
         for (int chunk=0; chunk<2; chunk++){
-       
+
           for (size_t i = 0; i < 10; i++) {
             buf2[2*i+1] = (uint8_t) (wtxt[i+chunk*10] & 0xFF);
             buf2[2*i] = (uint8_t) ((wtxt[i+chunk*10] >> 8) & 0xFF);
           }
-        
+
           sendCommand(EmsProto::addressUI800, 0x0137, chunk * 20 + (line - 1) * 40, (uint8_t *) buf2, 20);
         }
 
@@ -258,7 +242,7 @@ ApiCommandParser::handleRcCommand(std::istream& request)
 }
 
 
-void 
+void
 ApiCommandParser::refreshTestMode()
 {
     uint8_t data[1];
@@ -266,7 +250,7 @@ ApiCommandParser::refreshTestMode()
     data[0] = 0x5a;
 
     sendCommand(EmsProto::addressUBA2, 0x1d, 0, data, sizeof(data));
-    testModeRepeater.expires_from_now(boost::posix_time::milliseconds(5000));
+    testModeRepeater.expires_after(std::chrono::milliseconds(5000));
     testModeRepeater.async_wait([this] (const boost::system::error_code& error) {
        if (error != boost::asio::error::operation_aborted) refreshTestMode();
 
@@ -293,12 +277,12 @@ ApiCommandParser::handleUbaCommand(std::istream& request)
 	        "teststate <burnerpct> <fanpct> <pumppct> <3way012> <zirkpump01> <ignition01> <ionisator01>\n"
 		"OK");
 	return Ok;
-	
+
     } else if (cmd == "activeerrors") {
         startRequest(EmsProto::addressUBA2, 0x00bf, 0, 20 ,true);
         return Ok;
-	
-	
+
+
     } else if (cmd == "geterrors") {
         startRequest(EmsProto::addressUBA2, 0x00c2, 0, 10 * sizeof(EmsProto::ErrorRecord2),true);
         return Ok;
@@ -350,7 +334,7 @@ ApiCommandParser::handleUbaCommand(std::istream& request)
     } else if (cmd == "checkmaintenanceneeded") {
         startRequest(EmsProto::addressUBA2, 0x15, 0, 10);
         return Ok;
-        
+
     } else if (cmd == "resetmaintenanceindicator") {
         uint8_t data[1];
         memset(&data, 0, sizeof(data));
@@ -379,35 +363,35 @@ ApiCommandParser::handleUbaCommand(std::istream& request)
         if (mode == "on") {
 
             testModeRepeater.cancel();
-            testModeRepeater.expires_from_now(boost::posix_time::milliseconds(1000));
+            testModeRepeater.expires_after(std::chrono::milliseconds(1000));
             testModeRepeater.async_wait([this] (const boost::system::error_code& error) {
               refreshTestMode();
-            
+
             });
-            
-            output("OK");        
+
+            output("OK");
 
             return Ok;
-            
+
 
         } else if (mode == "off") {
 
             testModeRepeater.cancel();
-            
+
             uint8_t data[1];
             memset(&data, 0, sizeof(data));
             data[0] = 0x00;
 
             sendCommand(EmsProto::addressUBA2, 0x1d, 0, data, sizeof(data));
 
-            output("OK");        
+            output("OK");
 
             return Ok;
         }
 
         return InvalidArgs;
-        
-        
+
+
     } else if (cmd == "teststate") {
         std::string mode;
         uint8_t data[13];
@@ -426,17 +410,17 @@ ApiCommandParser::handleUbaCommand(std::istream& request)
             fanPercent = 0;
         }
 
-        
+
         request >> pumpePercent;
         if (!request || pumpePercent > 100) {
             pumpePercent = 0;
         }
-        
+
         request >> threeWayMode;
         if (!request || threeWayMode > 2) {
             threeWayMode = 0;
         }
-                  
+
         request >> zirkPumpOn;
         if (!request) {
             zirkPumpOn = false;
@@ -460,7 +444,7 @@ ApiCommandParser::handleUbaCommand(std::istream& request)
         data[7] = ignitionOn ? 1 : 0;
         data[9] = fanPercent;
         data[12] = ionisatorOn ? 1 : 0;
-        
+
         sendCommand(EmsProto::addressUBA2, 0x2d, 0, data, sizeof(data));
         return Ok;
     }
@@ -503,7 +487,7 @@ ApiCommandParser::handleRawCommand(std::istream& request)
 	}
 
 	sendCommand(target, type, offset, &value, 1);
-	
+
 	return Ok;
     }
 
@@ -554,12 +538,16 @@ ApiCommandParser::handleHkCommand(std::istream& request, uint16_t type)
     if (cmd == "help") {
 	output("Available subcommands:\n"
 	       "mode off|manual|auto\n"
+	       "getschedule 1|2\n"
+	       "getactiveschedule\n"
+	       "selectschedule single|1|2\n"
+	       "programschedule 1|2 <day0..6> <index1..6> <tcode>|<hh:mm> <cmd>\n"
 	       "manualtemp <temp>\n"
 	       "daytemperature <temp>\n"
-	       "nighttemperature <temp\n" 
+	       "nighttemperature <temp\n"
 	       "temporarytemp <temp>|off\n"
 	       "summerwinterthreshold <temp>\n"
-	       "summeropmode auto|heateron\n"	       
+	       "summeropmode auto|heateron\n"
 	       "designtemperature <temp>\n"
 	       "roomtemperatureoffset <temp>\n"
 	       "activateboost on|off\n"
@@ -571,7 +559,7 @@ ApiCommandParser::handleHkCommand(std::istream& request, uint16_t type)
 
 
     } else if (cmd == "requestdata") {
-        startRequest(EmsProto::addressUI800, 0x01b9, 0, 32, true, true);
+        startRequest(EmsProto::addressUI800, 0x01b9, 0, 30, true, true);
         startRequest(EmsProto::addressUI800, 0x01a5, 0, 46, true, true);
         startRequest(EmsProto::addressUI800, 0x01af, 0, 46, true, true);
 
@@ -582,9 +570,71 @@ ApiCommandParser::handleHkCommand(std::istream& request, uint16_t type)
 
     } else if (cmd == "roomtemperatureoffset") {
         return handleSingleByteValue(request, EmsProto::addressUI800, 0x01af, 2, 1, -5, 5);
-        
+
     } else if (cmd == "designtemperature") {
         return handleSingleByteValue(request, EmsProto::addressUI800, 0x01af, 5, 1, 30, 90);
+
+    } else if (cmd == "getschedule") {
+
+        unsigned int schedule;
+
+        request >> schedule;
+        if (!request || schedule < 1 || schedule > 2) {
+            return InvalidArgs;
+        }
+
+
+        startRequest(EmsProto::addressUI800, 0x01c3 + (schedule-1) * 390, 0, 7 * 6 * sizeof(EmsProto::ScheduleEntry2),true);
+        return Ok;
+
+
+    } else if (cmd == "getactiveschedule") {
+        startRequest(EmsProto::addressUI800, 0x01b9, 10, 25, true);
+        return Ok;
+
+   } else if (cmd == "selectschedule") {
+        std::string schedule;
+        uint8_t data;
+
+        request >> schedule;
+
+            if (schedule == "single") {
+                data = 0x00;
+                sendCommand(EmsProto::addressUI800, 0x01b9, 31, &data, 1);
+                return Ok;
+
+            } else if (schedule == "1"){
+                data = 0xff;
+                sendCommand(EmsProto::addressUI800, 0x01b9, 31, &data, 1);
+                data = 0x01;
+                sendCommand(EmsProto::addressUI800, 0x01b9, 11, &data, 1);
+                return Ok;
+
+            } else if (schedule == "2"){
+                data = 0xff;
+                sendCommand(EmsProto::addressUI800, 0x01b9, 31, &data, 1);
+                data = 0x02;
+                sendCommand(EmsProto::addressUI800, 0x01b9, 11, &data, 1);
+                return Ok;
+        }
+        return InvalidArgs;
+
+    } else if (cmd == "programschedule") {
+        unsigned int schedule, index, day;
+        EmsProto::ScheduleEntry2 entry;
+
+        request >> schedule >> day >> index;
+
+        if (!request || schedule < 1 || schedule > 2 || index > 42 || index < 1 || !parseScheduleEntry(request, &entry)) {
+            return InvalidArgs;
+        }
+
+        sendCommand(EmsProto::addressUI800, 0x01c3 + (schedule-1) * 390,
+                ((index - 1) + 6*day) * sizeof(EmsProto::ScheduleEntry2),
+                (uint8_t *) &entry, sizeof(entry));
+        return Ok;
+
+
 
     } else if (cmd == "summeropmode") {
         uint8_t data;
@@ -615,7 +665,7 @@ ApiCommandParser::handleHkCommand(std::istream& request, uint16_t type)
 
     } else if (cmd == "manualtemp") {
         return handleSingleByteValue(request,EmsProto::addressUI800, 0x01b9, 22, 2, 5, 30);
-        
+
     } else if (cmd == "daytemperature") {
         return handleSingleByteValue(request, EmsProto::addressUI800, 0x01b9, 2, 2, 5, 30);
 
@@ -688,6 +738,8 @@ ApiCommandParser::handleWwCommand(std::istream& request)
     if (cmd == "help") {
 	output("Available subcommands:\n"
 	       "mode off|eco|comfort|followheater|auto \n"
+	       "getschedule W|Z\n"
+               "programschedule W|Z <day0..6> <index1..6> <tcode>|<hh:mm> <cmd>\n"
 	       "zirkmode off|on|followww|auto \n"
                "zirksperhour <number> \n"
                "comforttemp <temp> \n"
@@ -695,6 +747,10 @@ ApiCommandParser::handleWwCommand(std::istream& request)
                "extratemp <temp> \n"
                "extra15mins <extra duration quarterly hours> \n"
                "extra on|off \n"
+               "thermdesinfect mode [on|off]\n"
+               "thermdesinfect day [monday|tuesday|...|sunday]\n"
+               "thermdesinfect hour <hour>\n"
+               "thermdesinfect temperature <temp>\n"
                "requestdata \n"
 		"OK");
 	return Ok;
@@ -714,6 +770,44 @@ ApiCommandParser::handleWwCommand(std::istream& request)
 
         sendCommand(EmsProto::addressUI800, 0x01f5, 2, &data, 1);
         return Ok;
+
+    } else if (cmd == "getschedule") {
+
+        std::string schedule;
+        request >> schedule;
+
+        if (schedule != "W" && schedule != "Z") {
+            return InvalidArgs;
+        }
+
+        uint16_t type;
+        type = (schedule == "W")?0x01ff:0x0209;
+
+        startRequest(EmsProto::addressUI800, type , 0, 7 * 6 * sizeof(EmsProto::ScheduleEntry2),true);
+
+        return Ok;
+
+
+    } else if (cmd == "programschedule") {
+        std::string schedule;
+        unsigned int index, day;
+        EmsProto::ScheduleEntry2 entry;
+
+        request >> schedule >> day >> index;
+
+        if (!request || (schedule != "W" && schedule != "Z") || index > 42 || index < 1 || !parseScheduleEntry(request, &entry)) {
+            return InvalidArgs;
+        }
+
+        uint16_t type;
+        type = (schedule == "W")?0x01ff:0x0209;
+
+        sendCommand(EmsProto::addressUI800, type,
+                ((index - 1) + 6*day) * sizeof(EmsProto::ScheduleEntry2),
+                (uint8_t *) &entry, sizeof(entry));
+        return Ok;
+
+
 
     } else if (cmd == "zirkmode") {
         uint8_t data;
@@ -736,6 +830,8 @@ ApiCommandParser::handleWwCommand(std::istream& request)
         startRequest(EmsProto::addressUI800, 0x01f5, 0, 21, true, true);
 
         return Ok;
+    } else if (cmd == "thermdesinfect") {
+        return handleThermDesinfectCommand(request);
 
     } else if (cmd == "comforttemp") {
         return handleSingleByteValue(request,EmsProto::addressUBA2, 0xea, 6, 1, 30, 80);
@@ -759,17 +855,79 @@ ApiCommandParser::handleWwCommand(std::istream& request)
 
         sendCommand(EmsProto::addressUI800, 0x01f5, 11, &data, 1);
         return Ok;
-        
+
     }
-    
+
     return InvalidCmd;
 }
+
+
+ApiCommandParser::CommandResult
+ApiCommandParser::handleThermDesinfectCommand(std::istream& request)
+{
+    std::string cmd;
+    request >> cmd;
+
+    if (cmd == "mode") {
+        uint8_t data;
+        std::string mode;
+
+        request >> mode;
+
+        if (mode == "on")       data = 0xff;
+        else if (mode == "off") data = 0x00;
+        else return InvalidArgs;
+
+        sendCommand(EmsProto::addressUI800, 0x01f5, 5, &data, 1);
+        return Ok;
+    } else if (cmd == "day") {
+
+        uint8_t data;
+        std::string day;
+
+        request >> day;
+
+        if (day == "everyday") {
+            data = 7;
+        } else {
+            for (data = 0; data < dayNameCount; data++) {
+                if (day == dayNames[data]) {
+                    break;
+                }
+            }
+            if (data == dayNameCount) {
+                return InvalidArgs;
+            }
+        }
+
+        sendCommand(EmsProto::addressUI800, 0x01f5, 7, &data, 1);
+        return Ok;
+
+    } else if (cmd == "hour") {
+
+        handleSingleByteValue(request,EmsProto::addressUI800, 0x01f5, 6, 4, 0, 24);
+
+        return Ok;
+
+    } else if (cmd == "temperature") {
+        uint8_t temperature;
+        if (!parseIntParameter(request, temperature, 80) || temperature < 60) {
+            return InvalidArgs;
+        }
+        sendCommand(EmsProto::addressUBA2, 0xea, 12, &temperature, 1);
+        return Ok;
+    }
+
+    return InvalidCmd;
+}
+
+
 
 
 boost::tribool
 ApiCommandParser::onIncomingMessage(const EmsMessage& message)
 {
-    
+
     if (!m_activeRequest) {
 	return boost::indeterminate;
     }
@@ -782,13 +940,41 @@ ApiCommandParser::onIncomingMessage(const EmsMessage& message)
 
     if (type == 0xff) {
 	m_activeRequest.reset();
-	return offset != 0x04;
-    }  
+        return offset != 0x04;
+    }
 
+/*
+    if (
+	    type != m_requestType
+	    ) {
+
+      output("TYPE MISMATCH");
+
+          std::ostringstream outputStream;
+          outputStream << boost::format("0x%04x ") % (unsigned int) m_requestType;
+          outputStream << boost::format("0x%04x \n") % (unsigned int) type;
+
+          output(outputStream.str());
+
+
+    } else {
+
+      output("TYPE match");
+
+          std::ostringstream outputStream;
+          outputStream << boost::format("0x%04x ") % (unsigned int) m_requestType;
+          outputStream << boost::format("0x%04x \n") % (unsigned int) type;
+
+          output(outputStream.str());
+    }
+
+*/
     if (source != m_requestDestination ||
-	    type != m_requestType      ||
-	    offset != (m_requestResponse.size() + m_requestOffset)) {
+//	    type != m_requestType      // ||
+	    offset != (m_requestResponse.size() + m_requestOffset)
+	    ) {
 	/* likely a response to a request we already retried, ignore it */
+
 	return boost::indeterminate;
     }
 
@@ -835,19 +1021,21 @@ ApiCommandParser::handleResponse()
 	    } SOURCES[] = {
 		{ EmsProto::addressUBA2, "UBA2" },
 		{ EmsProto::addressUI800, "UI800" },
-		{ EmsProto::addressRH800, "RH800" }
+		{ EmsProto::addressConnectKey, "CKey" },
+//		{ EmsProto::addressRH800, "RH800" }
 
 	    };
 	    static const size_t SOURCECOUNT = sizeof(SOURCES) / sizeof(SOURCES[0]);
 
 	    unsigned int major = m_requestResponse[1];
 	    unsigned int minor = m_requestResponse[2];
+	    unsigned int build =  m_requestResponse[3] *256 +  m_requestResponse[4];
 	    size_t index;
 
 	    for (index = 0; index < SOURCECOUNT; index++) {
 		if (m_requestDestination == SOURCES[index].source) {
-		    boost::format f("%s version: %d.%02d");
-		    f % SOURCES[index].name % major % minor;
+		    boost::format f("%s version: %d.%02d.%05d");
+		    f % SOURCES[index].name % major % minor % build;
 		    output(f.str());
 		    break;
 		}
@@ -855,27 +1043,27 @@ ApiCommandParser::handleResponse()
 	    if (index >= (SOURCECOUNT - 1)) {
 		return true;
 	    }
-	    startRequest(SOURCES[index + 1].source, 0x02, 0, 3);
+	    startRequest(SOURCES[index + 1].source, 0x02, 0, 5);
 	    break;
 	}
-	
+
         case 0x0137: { /* get contact info */
             if (!continueRequest()) {
                 for (size_t i = 0; i < m_requestResponse.size(); i += 40) {
                     size_t len = std::min(m_requestResponse.size() - i, static_cast<size_t>(40));
                     char buffer[40];
                     memcpy(buffer, &m_requestResponse.at(i), len);
-                    
-                    std::u16string inln = u"                    "; 
-                    std::wstring_convert<std::codecvt_utf8_utf16<char16_t>,char16_t> convert; 
+
+                    std::u16string inln = u"                    ";
+                    std::wstring_convert<std::codecvt_utf8_utf16<char16_t>,char16_t> convert;
 
                     for (int i=0; i<20; i++){
 
-                      inln[i] = ((buffer[2*i] & 0xff)<<8)  + (buffer[2*i+1] & 0xff); 
+                      inln[i] = ((buffer[2*i] & 0xff)<<8)  + (buffer[2*i+1] & 0xff);
                     }
 
-                    std::string outln = convert.to_bytes(inln);     
-                    
+                    std::string outln = convert.to_bytes(inln);
+
                     output(outln);
                 }
                 return true;
@@ -884,17 +1072,36 @@ ApiCommandParser::handleResponse()
 
 	}
 
+        case 0x01b9:  // hk
+        {
+
+          unsigned int actsched =  m_requestResponse[11 - m_requestOffset];
+          unsigned int dualsched = m_requestResponse[31 - m_requestOffset];
+          if (dualsched==0x00) {
+            output("single");
+          } else {
+            boost::format f("%d");
+            f % actsched ;
+            output(f.str());
+          }
+
+          return true;
+          break;
+
+        }
+
+
         case 0xbf: /* get errors */ {
-            
+
             m_parsePosition = 3;
             const char *prefix = " ";
             boost::tribool result = loopOverResponse<EmsProto::ErrorRecordShort>(prefix);
             return result;
             break;
         }
-        
-        
-        case 0xc0: /* get errors history*/ 
+
+
+        case 0xc0: /* get errors history*/
         case 0xc2: /* get errors history*/ {
             static const char * errorTypes[] = {
                 "R", " ", "U", " ",
@@ -906,21 +1113,52 @@ ApiCommandParser::handleResponse()
         }
 
 
-	
-	case 0x0015:  // maintenanceinfo 
-        case 0x0140:  // rc 
+        case 0x01ff: /* get ww schedule */
+        case 0x0209: /* get zp schedule */
+        case 0x01c3: /* get hk1 schedule 1*/
+        case 0x0349: /* get hk1 schedule 2*/
+
+
+        {
+            const char *prefix;
+            switch (m_requestType){
+            case 0x01ff: /* get ww schedule */
+              prefix = "W";
+              break;
+
+            case 0x0209: /* get zp schedule */
+              prefix = "Z";
+              break;
+
+            case 0x01c3: /* get hk1 schedule */
+            case 0x0349:
+              prefix = "H";
+              break;
+
+            }
+
+            boost::tribool result = loopOverResponse<EmsProto::ScheduleEntry2>(prefix);
+            return result;
+            break;
+        }
+
+
+
+	case 0x0015:  // maintenanceinfo
+        case 0x0140:  // rc
         case 0x01a5:  // hk
         case 0x01af:  // hk
-        case 0x01b9:  // hk
         case 0x01f5:  // ww
         case 0x00ea:  // ww
         {
-	
+
 	  return true;
 	  break;
-	  
+
 	}
-	
+
+
+
 	default:
 	    /* unhandled message */
 	    return false;
@@ -935,18 +1173,17 @@ ApiCommandParser::loopOverResponse(const char *prefix)
     const size_t msgSize = sizeof(T);
     while (m_parsePosition + msgSize <= m_requestResponse.size()) {
 	T *record = (T *) &m_requestResponse.at(m_parsePosition);
-	std::string response = buildRecordResponse(record);
+	std::string response = buildRecordResponse(record, m_parsePosition);
 
 	m_parsePosition += msgSize;
 	m_responseCounter++;
 
-	if (response.empty()) {
-	    return true;
-	}
+	if (!response.empty()) {
 
-	boost::format f("%s%02d %s");
-	f % prefix % m_responseCounter % response;
-	output(f.str());
+	  boost::format f("%s%02d %s");
+	  f % prefix % m_responseCounter % response;
+	  output(f.str());
+	}
     }
 
     if (!continueRequest()) {
@@ -974,7 +1211,7 @@ ApiCommandParser::onTimeout()
 
 
 std::string
-ApiCommandParser::buildRecordResponse(const EmsProto::ErrorRecord *record)
+ApiCommandParser::buildRecordResponse(const EmsProto::ErrorRecord *record , uint8_t position)
 {
     if (record->errorAscii[0] == 0) {
 	/* no error at this position */
@@ -1000,7 +1237,7 @@ ApiCommandParser::buildRecordResponse(const EmsProto::ErrorRecord *record)
     return response.str();
 }
 std::string
-ApiCommandParser::buildRecordResponse(const EmsProto::ErrorRecord2 *record)
+ApiCommandParser::buildRecordResponse(const EmsProto::ErrorRecord2 *record , uint8_t position)
 {
     if (record->errorAscii[0] == 0) {
 	/* no error at this position */
@@ -1036,7 +1273,7 @@ ApiCommandParser::buildRecordResponse(const EmsProto::ErrorRecord2 *record)
 }
 
 std::string
-ApiCommandParser::buildRecordResponse(const EmsProto::ErrorRecordShort *record)
+ApiCommandParser::buildRecordResponse(const EmsProto::ErrorRecordShort *record , uint8_t position)
 {
     if (record->errorAscii[0] == 0) {
 	/* no error at this position */
@@ -1046,7 +1283,7 @@ ApiCommandParser::buildRecordResponse(const EmsProto::ErrorRecordShort *record)
 
     response << boost::format("%c%c%c %d ")
 	    % record->errorAscii[0] % record->errorAscii[1] % record->errorAscii[2]
-	    % BE16_TO_CPU(record->code_be16); 
+	    % BE16_TO_CPU(record->code_be16);
 
     return response.str();
 }
@@ -1054,7 +1291,7 @@ ApiCommandParser::buildRecordResponse(const EmsProto::ErrorRecordShort *record)
 
 
 std::string
-ApiCommandParser::buildRecordResponse(const EmsProto::ScheduleEntry *entry)
+ApiCommandParser::buildRecordResponse(const EmsProto::ScheduleEntry *entry , uint8_t position)
 {
     if (entry->time >= 0x90) {
 	/* unset */
@@ -1068,64 +1305,87 @@ ApiCommandParser::buildRecordResponse(const EmsProto::ScheduleEntry *entry)
     return f.str();
 }
 
-bool
-ApiCommandParser::parseScheduleEntry(std::istream& request, EmsProto::ScheduleEntry *entry)
-{
-    std::string day, time, mode;
 
-    request >> day;
+std::string
+ApiCommandParser::buildRecordResponse(const EmsProto::ScheduleEntry2 *entry, uint8_t position)
+{
+
+    unsigned int minutes = entry->time * 15;
+    unsigned int action = entry->mode;
+    unsigned int timecode = entry->time;
+
+
+    if (entry->time >= 0xf0) {
+        /* unset */
+//      boost::format f("%s xx:xx x %01d %01d ");
+//      f % dayNames[position / 12] % (position / 12) % (timecode);
+//      return f.str();
+        return "";
+
+    } else {
+
+      boost::format f("%s %02d:%02d %01d %01d %01d ");
+      f % dayNames[position / 12] % (minutes / 60) % (minutes % 60) % action % (position / 12) % (timecode);
+      return f.str();
+
+    }
+
+}
+
+
+
+bool
+ApiCommandParser::parseScheduleEntry(std::istream& request, EmsProto::ScheduleEntry2 *entry)
+{
+    std::string time;
+    int mode;
+
+    request >> time;
     if (!request) {
 	return false;
     }
 
-    if (day == "unset") {
-	entry->on = 7;
-	entry->day = 0xe;
-	entry->time = 0x90;
+    if (time == "unset") {
+	entry->mode = 0x00;
+	entry->time = 0xff;
 	return true;
     }
 
-    request >> time >> mode;
+    request >> mode;
     if (!request) {
 	return false;
     }
 
-    if (mode == "on") {
-	entry->on = 1;
-    } else if (mode == "off") {
-	entry->on = 0;
-    } else {
-	return false;
-    }
-
-    bool hasDay = false;
-    for (size_t i = 0; i < dayNameCount; i++) {
-	if (day == dayNames[i]) {
-	    entry->day = 2 * i;
-	    hasDay = true;
-	    break;
-	}
-    }
-    if (!hasDay) {
-	return false;
-    }
+    entry->mode = mode;
 
     size_t pos = time.find(":");
     if (pos == std::string::npos) {
-	return false;
-    }
-    try {
-	unsigned int hours = boost::lexical_cast<unsigned int>(time.substr(0, pos));
-	unsigned int minutes = boost::lexical_cast<unsigned int>(time.substr(pos + 1));
-	if (hours > 23 || minutes >= 60 || (minutes % 10) != 0) {
+      try {
+	unsigned int timecode = boost::lexical_cast<unsigned int>(time);
+	if (timecode > 95 || timecode < 0) {
 	    return false;
 	}
 
-	entry->time = (uint8_t) ((hours * 60 + minutes) / 10);
-    } catch (boost::bad_lexical_cast& e) {
+	entry->time = (uint8_t) (timecode);
+      } catch (boost::bad_lexical_cast& e) {
 	return false;
-    }
+      }
 
+
+
+    } else {
+      try {
+	unsigned int hours = boost::lexical_cast<unsigned int>(time.substr(0, pos));
+	unsigned int minutes = boost::lexical_cast<unsigned int>(time.substr(pos + 1));
+	if (hours > 23 || minutes >= 60 || (minutes % 15) != 0) {
+	    return false;
+	}
+
+	entry->time = (uint8_t) ((hours * 4 + minutes / 15) );
+      } catch (boost::bad_lexical_cast& e) {
+	return false;
+      }
+    }
     return true;
 }
 
@@ -1216,20 +1476,21 @@ void
 ApiCommandParser::sendCommand(uint8_t dest, uint16_t type, uint8_t offset,
 			       const uint8_t *data, size_t count,
 			       bool expectResponse)
-{   
+{
     std::vector<uint8_t> sendData(data, data + count);
 
     m_retriesLeft = MaxRequestRetries;
 
+/*
     DebugStream& debug = Options::messageDebug();
     debug << "New EmsMessage: dest=";
     debug << boost::format("0x%02x ") % (unsigned int) dest << " type=";
     debug << boost::format("0x%04x ") % (unsigned int) type << " offset=";
     debug << boost::format("%d ") % (unsigned int) offset << " \n";
 //    debug << boost::format("0x%08x ") % sendData <<"\n";
-    
+*/
 
-    
+
     m_activeRequest.reset(new EmsMessage(dest, type, offset, sendData, expectResponse));
     sendActiveRequest();
 }

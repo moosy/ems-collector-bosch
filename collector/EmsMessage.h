@@ -94,6 +94,11 @@ class EmsProto {
 	} ScheduleEntry;
 
 	typedef struct {
+	    uint8_t mode;
+	    uint8_t time;
+	} ScheduleEntry2;
+
+	typedef struct {
 	    uint8_t day;
 	    uint8_t month;
 	    uint8_t year;
@@ -118,7 +123,7 @@ class EmsValue {
 	    MaxTemp, /* HKx, WW */
 	    ManualTemp, 
 	    TemporaryTemp,
-	    BoostTemp,
+	    BooTemp,
 	    BoostHours,
 	    BoostActive,
 	    BoostRemainingMins,
@@ -352,7 +357,7 @@ class EmsMessage
 	    return m_dest; 
 	}
 	uint16_t getType() const {
-  	    return m_extType != 0 ? m_extType : m_type;
+  	    return m_type > 0xf0 ? m_extType : m_type;
 
 	}
 	uint8_t getOffset() const {
@@ -364,7 +369,7 @@ class EmsMessage
 	std::vector<uint8_t> getSendData(bool omitSenderAddress) const;
 
     private:
-	void parseUBATotalUptimeMessage();
+	void parseUBA2TotalUptimeMessage();
 	void parseUBA2MonitorMessage();
 	void parseUBA2MonitorMessage2();
         void parseUBA2OutdoorMessage(); 

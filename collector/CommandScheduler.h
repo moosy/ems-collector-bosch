@@ -21,6 +21,7 @@
 #define __COMMANDSCHEDULER_H__
 
 #include <map>
+#include <chrono>
 #include <list>
 #include <boost/asio.hpp>
 #include "EmsMessage.h"
@@ -36,10 +37,10 @@ class EmsCommandClient
 class EmsCommandSender : public boost::noncopyable
 {
     public:
-	typedef boost::shared_ptr<EmsMessage> MessagePtr;
-	typedef boost::shared_ptr<EmsCommandClient> ClientPtr;
+	typedef std::shared_ptr<EmsMessage> MessagePtr;
+	typedef std::shared_ptr<EmsCommandClient> ClientPtr;
 
-	EmsCommandSender(boost::asio::io_service& ios) :
+	EmsCommandSender(boost::asio::io_context& ios) :
 	    m_responseTimeout(ios),
 	    m_sendTimer(ios)
         {}
@@ -66,9 +67,9 @@ class EmsCommandSender : public boost::noncopyable
 
 	ClientPtr m_currentClient;
 	std::list<std::pair<ClientPtr, MessagePtr> > m_pending;
-	boost::asio::deadline_timer m_responseTimeout;
-	boost::asio::deadline_timer m_sendTimer;
-	std::map<uint8_t, boost::posix_time::ptime> m_lastCommTimes;
+	boost::asio::steady_timer m_responseTimeout;
+	boost::asio::steady_timer m_sendTimer;
+	std::map<uint8_t, std::chrono::steady_clock::time_point> m_lastCommTimes;
 };
 
 #endif /* __COMMANDSCHEDULER_H__ */

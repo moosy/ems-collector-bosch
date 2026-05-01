@@ -24,7 +24,7 @@
 SendingSerialHandler::SendingSerialHandler(const std::string& device,
 					   ValueCache& cache) :
     SerialHandler(device, cache),
-    EmsCommandSender((boost::asio::io_service&) *this)
+    EmsCommandSender((boost::asio::io_context&) *this)
 {
 }
 
