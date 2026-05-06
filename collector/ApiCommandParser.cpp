@@ -559,7 +559,7 @@ ApiCommandParser::handleHkCommand(std::istream& request, uint16_t type)
 
 
     } else if (cmd == "requestdata") {
-        startRequest(EmsProto::addressUI800, 0x01b9, 0, 30, true, true);
+        startRequest(EmsProto::addressUI800, 0x01b9, 2, 32, true, true);
         startRequest(EmsProto::addressUI800, 0x01a5, 0, 46, true, true);
         startRequest(EmsProto::addressUI800, 0x01af, 0, 46, true, true);
 
