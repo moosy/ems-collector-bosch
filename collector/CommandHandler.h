@@ -52,6 +52,8 @@ class CommandConnection : public std::enable_shared_from_this<CommandConnection>
 		boost::bind(&CommandConnection::handleRequest, shared_from_this(),
 			    boost::asio::placeholders::error));
 	}
+
+        void initAfterConstruction();   // NEU
 	void close() {
 	    m_socket.close();
 	}
@@ -62,21 +64,27 @@ class CommandConnection : public std::enable_shared_from_this<CommandConnection>
 	void handleRequest(const boost::system::error_code& error);
 	void handleWrite(const boost::system::error_code& error);
 
-	class CommandClient : public EmsCommandClient {
-	    public:
-		CommandClient(CommandConnection *connection) :
-		    m_connection(connection)
-		{}
-		void onIncomingMessage(const EmsMessage& message) override {
-		    m_connection->onIncomingMessage(message);
-		}
-		void onTimeout() {
-		    m_connection->onTimeout();
-		}
 
-	    private:
-		CommandConnection *m_connection;
-	};
+        class CommandClient : public EmsCommandClient {
+            public:
+                CommandClient(std::weak_ptr<CommandConnection> connection) :
+                    m_connection(connection)
+                {}
+                void onIncomingMessage(const EmsMessage& message) override {
+                    if (auto conn = m_connection.lock()) {
+                        conn->onIncomingMessage(message);
+                    }
+                }
+                void onTimeout() {
+                    if (auto conn = m_connection.lock()) {
+                        conn->onTimeout();
+                    }
+                }
+            private:
+                std::weak_ptr<CommandConnection> m_connection;
+        };
+
+
 
 	void respond(const std::string& response) {
 	    boost::asio::async_write(m_socket, boost::asio::buffer(response + "\n"),

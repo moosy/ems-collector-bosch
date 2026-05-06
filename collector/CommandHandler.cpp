@@ -70,25 +70,39 @@ CommandHandler::stopConnection(CommandConnection::Ptr connection)
     connection->close();
 }
 
+
+CommandConnection::CommandConnection(boost::asio::io_context& ios,
+                                     EmsCommandSender& sender,
+                                     CommandHandler& handler,
+                                     ValueCache *cache) :
+    m_socket(ios),
+    m_commandClient(nullptr),
+    m_parser(sender, nullptr, cache, ApiCommandParser::OutputCallback{}, ios),
+    m_handler(handler)
+{
+}
+
+void
+CommandConnection::initAfterConstruction()
+{
+    std::weak_ptr<CommandConnection> weak = shared_from_this();
+    m_commandClient = std::make_shared<CommandClient>(weak);
+    m_parser.setClient(m_commandClient);
+    m_parser.setOutputCallback([weak](const std::string& response) {
+        if (auto self = weak.lock()) {
+            self->respond(response);
+        }
+    });
+}
+
 void
 CommandHandler::startAccepting()
 {
     CommandConnection::Ptr connection(new CommandConnection(m_ios, m_sender, *this, m_cache));
+    connection->initAfterConstruction();
     m_acceptor.async_accept(connection->socket(),
-		            boost::bind(&CommandHandler::handleAccept, this,
-					connection, boost::asio::placeholders::error));
-}
-
-
-CommandConnection::CommandConnection(boost::asio::io_context& ios,
-				     EmsCommandSender& sender,
-				     CommandHandler& handler,
-				     ValueCache *cache) :
-    m_socket(ios),
-    m_commandClient(new CommandClient(this)),
-    m_parser(sender, m_commandClient, cache, boost::bind(&CommandConnection::respond, this, boost::placeholders::_1), ios),
-    m_handler(handler)
-{
+                            boost::bind(&CommandHandler::handleAccept, this,
+                                        connection, boost::asio::placeholders::error));
 }
 
 void

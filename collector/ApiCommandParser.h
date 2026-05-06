@@ -23,7 +23,7 @@
 #include <boost/logic/tribool.hpp>
 #include "CommandScheduler.h"
 #include "ValueCache.h"
-#include <codecvt> 
+#include <codecvt>
 
 class ApiCommandParser : public boost::noncopyable
 {
@@ -46,6 +46,14 @@ class ApiCommandParser : public boost::noncopyable
 	CommandResult parse(std::istream& request);
 	boost::tribool onIncomingMessage(const EmsMessage& message);
 	bool onTimeout();
+
+        // NEU: Setter für post-construction Initialisierung
+        void setClient(const std::shared_ptr<EmsCommandClient>& client) {
+            m_client = client;
+        }
+        void setOutputCallback(OutputCallback cb) {
+            m_outputCb = cb;
+        }
 
     public:
 	static std::string buildRecordResponse(const EmsProto::ErrorRecord *record, uint8_t position);
