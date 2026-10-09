@@ -434,6 +434,17 @@ ApiCommandParser::handleUbaCommand(std::istream& request)
 
 
     } else if (cmd == "teststate") {
+        /* Function test values, UBA2 (0x88) type 0x2D, 13 bytes; only effective while the test mode
+         * (type 0x1D = 0x5A, see testmode) is on. Reverse engineered by Michael (2023) and Claude (2026-10):
+         *   0  burner power %          2  boiler pump %        3  3-way valve 0 heating / 1 hot water / 2 middle
+         *   4  circulation pump 0/1    7  ignition 0/1         9  fan %               12  ionisation 0/1
+         *   1, 5, 6, 8, 10, 11 unknown (always 0)
+         * The record can be read back ("raw read 136 45 0 13"). Observed behaviour of the UBA2 firmware:
+         *   - while the fan runs (byte 9 > 0) the boiler does not accept valve = 1, byte 3 stays 0 (heating)
+         *   - burner requested with pump 0 %: the boiler starts the pump at 50 % and uses the heating circuit
+         *   - out-of-range values (e.g. valve 255) are dropped silently
+         * EMS-ESP uses type 0x1D with the whole record instead (0 = 0x5A, 1 burner %, 3 pump %, 4 valve 0xFF = hot
+         * water) - not tried with the UBA2 yet. */
         std::string mode;
         uint8_t data[13];
 
