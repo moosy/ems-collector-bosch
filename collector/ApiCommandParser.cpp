@@ -26,7 +26,7 @@
 #include "Options.h"
 
 /* version of our command API */
-#define API_VERSION "2026100901"
+#define API_VERSION "2026100902"
 
 ApiCommandParser::ApiCommandParser(EmsCommandSender& sender,
 				   const std::shared_ptr<EmsCommandClient>& client,
@@ -867,6 +867,11 @@ ApiCommandParser::handleWwCommand(std::istream& request)
                "dailyheatup on|off \n"
                "dailyheatuptime <hours, quarter steps e.g. 2.25> \n"
                "dailyheatuptemp <temp> \n"
+               "enabled on|off \n"
+               "maxtemp <temp> \n"
+               "maxpower <percent> \n"
+               "switchondiff <kelvin, negative> \n"
+               "alternating on|off \n"
                "extra on|off \n"
                "thermdesinfect mode [on|off]\n"
                "thermdesinfect day [monday|tuesday|...|sunday]\n"
@@ -994,6 +999,21 @@ ApiCommandParser::handleWwCommand(std::istream& request)
 
     } else if (cmd == "dailyheatuptemp") {
         return handleSingleByteValue(request, EmsProto::addressUBA2, 0xea, 17, 1, 60, 80);
+
+    } else if (cmd == "enabled") {        // Warmwasserbereitung einschalten
+        return handleEnumValue(request, EmsProto::addressUBA2, 0xea, 5, { { "off", 0 }, { "on", 1 } });
+
+    } else if (cmd == "maxtemp") {        // Grenzwert fuer alle Warmwassertemperaturen
+        return handleSingleByteValue(request, EmsProto::addressUBA2, 0xea, 20, 1, 35, 80);
+
+    } else if (cmd == "maxpower") {       // max. Warmwasserleistung in %
+        return handleSingleByteValue(request, EmsProto::addressUBA2, 0xea, 21, 1, 40, 100);
+
+    } else if (cmd == "switchondiff") {   // Einschalttemperatur-Differenz (Nachladen ab)
+        return handleSingleByteValue(request, EmsProto::addressUBA2, 0xea, 7, 1, -10, -2);
+
+    } else if (cmd == "alternating") {    // Wechselbetrieb mit Heizung
+        return handleEnumValue(request, EmsProto::addressUBA2, 0xea, 14, { { "off", 0 }, { "on", 1 } });
 
     }
 
