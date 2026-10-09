@@ -865,7 +865,7 @@ ApiCommandParser::handleWwCommand(std::istream& request)
                "extratemp <temp> \n"
                "extra15mins <extra duration quarterly hours> \n"
                "dailyheatup on|off \n"
-               "dailyheatuptime <hh:mm> (quarter hours) \n"
+               "dailyheatuptime <hours, quarter steps e.g. 2.25> \n"
                "dailyheatuptemp <temp> \n"
                "extra on|off \n"
                "thermdesinfect mode [on|off]\n"
@@ -981,13 +981,14 @@ ApiCommandParser::handleWwCommand(std::istream& request)
         return handleEnumValue(request, EmsProto::addressUI800, 0x01f5, 8, { { "off", 0x00 }, { "on", 0xff } });
 
     } else if (cmd == "dailyheatuptime") {
-        unsigned int hour, minute;
-        char colon;
-        request >> hour >> colon >> minute;
-        if (!request || colon != ':' || hour > 23 || (minute != 0 && minute != 15 && minute != 30 && minute != 45)) {
+        // Startzeit in Stunden im Viertelstundenraster (z. B. 2.25 = 02:15), wie "thermdesinfect hour"
+        float hours;
+        request >> hours;
+        float quarters = hours * 4;
+        if (!request || quarters < 0 || quarters > 95 || quarters != (int) quarters) {
             return InvalidArgs;
         }
-        uint8_t data = hour * 4 + minute / 15;
+        uint8_t data = (uint8_t) quarters;
         sendCommand(EmsProto::addressUI800, 0x01f5, 9, &data, 1);
         return Ok;
 
