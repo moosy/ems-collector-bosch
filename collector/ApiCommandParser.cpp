@@ -248,9 +248,50 @@ ApiCommandParser::handleRcCommand(std::istream& request)
 }
 
 
+ApiCommandParser *ApiCommandParser::s_testModeParser = nullptr;
+
+void
+ApiCommandParser::testModeOn(unsigned int seconds)
+{
+    bool wasActive = m_testModeActive;
+    m_testModeActive = true;
+    m_testModeUntil = std::chrono::steady_clock::now() + std::chrono::seconds(seconds);
+    if (!wasActive) {
+	testModeRepeater.cancel();
+	refreshTestMode();   /* switch on right away; refreshTestMode() re-arms itself */
+    }
+}
+
+void
+ApiCommandParser::testModeOff()
+{
+    m_testModeActive = false;
+    testModeRepeater.cancel();
+    uint8_t data[1] = { 0x00 };
+    sendCommand(EmsProto::addressUBA2, 0x1d, 0, data, sizeof(data));
+}
+
+int
+ApiCommandParser::testModeRemaining() const
+{
+    if (!m_testModeActive) {
+	return -1;
+    }
+    auto left = std::chrono::duration_cast<std::chrono::seconds>(m_testModeUntil - std::chrono::steady_clock::now());
+    return left.count() > 0 ? (int) left.count() : 0;
+}
+
 void
 ApiCommandParser::refreshTestMode()
 {
+    if (!m_testModeActive) {
+	return;
+    }
+    if (std::chrono::steady_clock::now() >= m_testModeUntil) {
+	testModeOff();       /* time is up */
+	return;
+    }
+
     uint8_t data[1];
     memset(&data, 0, sizeof(data));
     data[0] = 0x5a;
@@ -347,8 +388,7 @@ ApiCommandParser::handleUbaCommand(std::istream& request)
         data[0] = 0xff;
 
         sendCommand(EmsProto::addressUBA2, 0x05, 8, data, sizeof(data));
-        output("OK");
-        return Ok;
+        return Ok;   /* the acknowledge of the write answers OK */
 
     } else if (cmd == "unlockfault") {
         uint8_t data[1];
@@ -357,42 +397,36 @@ ApiCommandParser::handleUbaCommand(std::istream& request)
 
         sendCommand(EmsProto::addressUBA2, 0x05, 0, data, sizeof(data));
         sendCommand(EmsProto::addressUI800, 0x05, 0, data, sizeof(data));
-        output("OK");
-        return Ok;
+        return Ok;   /* the acknowledge of the write answers OK */
 
 
     } else if (cmd == "testmode") {
-
+        /* uba testmode on [seconds]   (default 60, max. 600; calling again extends)
+         * uba testmode off
+         * uba testmode status          -> "on <seconds left>" or "off" */
         std::string mode;
         request >> mode;
+        ApiCommandParser *holder = s_testModeParser ? s_testModeParser : this;
 
         if (mode == "on") {
-
-            testModeRepeater.cancel();
-            testModeRepeater.expires_after(std::chrono::milliseconds(1000));
-            testModeRepeater.async_wait([this] (const boost::system::error_code& error) {
-              /* the timer is cancelled when the connection (and this parser) goes away -
-               * must not touch 'this' then */
-              if (error != boost::asio::error::operation_aborted) refreshTestMode();
-            });
-
-            output("OK");
-
+            unsigned int seconds;
+            if (!(request >> seconds)) {
+                seconds = 60;
+            }
+            if (seconds < 1 || seconds > 600) {
+                return InvalidArgs;
+            }
+            holder->testModeOn(seconds);
+            output("OK");   /* the writes run on the holder, so no acknowledge reaches this connection */
             return Ok;
-
-
         } else if (mode == "off") {
-
-            testModeRepeater.cancel();
-
-            uint8_t data[1];
-            memset(&data, 0, sizeof(data));
-            data[0] = 0x00;
-
-            sendCommand(EmsProto::addressUBA2, 0x1d, 0, data, sizeof(data));
-
+            holder->testModeOff();
             output("OK");
-
+            return Ok;
+        } else if (mode == "status") {
+            int left = holder->testModeRemaining();
+            output(left >= 0 ? "on " + std::to_string(left) : std::string("off"));
+            output("OK");
             return Ok;
         }
 

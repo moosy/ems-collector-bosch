@@ -136,6 +136,26 @@ class CommandHandler : private boost::noncopyable
 	ValueCache *m_cache;
 	boost::asio::ip::tcp::acceptor m_acceptor;
 	std::set<CommandConnection::Ptr> m_connections;
+
+	/* long-lived parser that holds the test mode (see ApiCommandParser::s_testModeParser) */
+	class TestModeClient : public EmsCommandClient {
+	    public:
+		ApiCommandParser *parser = nullptr;
+		bool onIncomingMessage(const EmsMessage& message) override {
+		    if (!parser || !parser->isResponseToActiveRequest(message)) {
+			return false;
+		    }
+		    parser->onIncomingMessage(message);
+		    return true;
+		}
+		void onTimeout() override {
+		    if (parser) {
+			parser->onTimeout();
+		    }
+		}
+	};
+	std::shared_ptr<TestModeClient> m_testModeClient;
+	std::unique_ptr<ApiCommandParser> m_testModeParser;
 };
 
 #endif /* __COMMANDHANDLER_H__ */

@@ -28,13 +28,20 @@ CommandHandler::CommandHandler(boost::asio::io_context& ios,
     m_ios(ios),
     m_sender(sender),
     m_cache(cache),
-    m_acceptor(ios, endpoint)
+    m_acceptor(ios, endpoint),
+    m_testModeClient(std::make_shared<TestModeClient>())
 {
+    m_testModeParser.reset(new ApiCommandParser(sender, m_testModeClient, cache,
+						ApiCommandParser::OutputCallback{}, ios));
+    m_testModeClient->parser = m_testModeParser.get();
+    ApiCommandParser::s_testModeParser = m_testModeParser.get();
     startAccepting();
 }
 
 CommandHandler::~CommandHandler()
 {
+    ApiCommandParser::s_testModeParser = nullptr;
+    m_testModeClient->parser = nullptr;
     m_acceptor.close();
     std::for_each(m_connections.begin(), m_connections.end(),
 		  boost::bind(&CommandConnection::close, boost::placeholders::_1));

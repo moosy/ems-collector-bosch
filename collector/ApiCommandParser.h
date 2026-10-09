@@ -47,6 +47,14 @@ class ApiCommandParser : public boost::noncopyable
 	CommandResult parse(std::istream& request);
 	boost::tribool onIncomingMessage(const EmsMessage& message);
 	bool isResponseToActiveRequest(const EmsMessage& message) const;
+
+	/* Test mode is held by one long-lived parser (owned by CommandHandler), not by the parser
+	 * of the connection that switched it on: a web page uses a new connection per request.
+	 * It ends automatically when the requested time is over. */
+	static ApiCommandParser *s_testModeParser;
+	void testModeOn(unsigned int seconds);
+	void testModeOff();
+	int testModeRemaining() const;   /* seconds, -1 if off */
 	bool onTimeout();
 
         // NEU: Setter für post-construction Initialisierung
@@ -130,6 +138,8 @@ class ApiCommandParser : public boost::noncopyable
 	};
 	std::deque<FollowUpRequest> m_followUps;
 	boost::asio::steady_timer testModeRepeater;
+	bool m_testModeActive = false;
+	std::chrono::steady_clock::time_point m_testModeUntil;
 };
 
 #endif /* __APICOMMANDPARSER_H__ */
