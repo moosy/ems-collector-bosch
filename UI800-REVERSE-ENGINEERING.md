@@ -48,4 +48,5 @@ Lesen hinter dem Telegrammende: Leerantwort (type 0x0000, Daten = Typnummer).
 - B0 Heizbetrieb 0/1 | B1 Max. Vorlauf °C | B4 Max. Heizleistung % | B8 Ausschaltdiff. K | B9 Einschaltdiff. int8 K | B10 Taktsperre min
 - vermutl.: B12 Pumpennachlauf min (3), B14 Nachlaufmodulation % (10), B19 Notbetrieb-Vorlauf °C (30)
 - 0xE6 B21 Entlüftungsbetrieb: 0 Aus, 1 Auto (Red. Lstg.), 2 Dauerhaft ein  ✔
+  Achtung: einmal gestartet (Code 357) läuft die Entlüftung ca. 22 min durch, auch wenn gleich wieder auf 0 gestellt.
 - 0xE6 B22 Siphonfüllprogramm: 0 Aus, 1 Ein (min. Wärmeerzeugerleistung), 2 Ein (min. Heizleistung)  ✔ (Michael hatte 1; am 09.10. 19:59 auf 0 gestellt)
