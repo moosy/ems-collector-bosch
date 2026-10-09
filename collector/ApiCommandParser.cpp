@@ -26,7 +26,7 @@
 #include "Options.h"
 
 /* version of our command API */
-#define API_VERSION "2026050601"
+#define API_VERSION "2026100901"
 
 ApiCommandParser::ApiCommandParser(EmsCommandSender& sender,
 				   const std::shared_ptr<EmsCommandClient>& client,
