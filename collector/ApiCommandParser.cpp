@@ -318,12 +318,26 @@ ApiCommandParser::handleUbaCommand(std::istream& request)
 	        "geterrors\n"
                 "schedulemaintenance off | byhours <burnerhours / 100> | bydate YYYY-MM-DD | bymonths <uptime>\n"
                 "checkmaintenanceneeded\n"
+                "requestdata\n"
+                "ventingmode off|auto|on\n"
+                "siphonfill off|minheaterpower|minheatingpower\n"
                 "resetmaintenanceindicator\n"
                 "unlockfault\n"
 	        "testmode <on|off>\n"
 	        "teststate <burnerpct> <fanpct> <pumppct> <3way012> <zirkpump01> <ignition01> <ionisator01>\n"
 		"OK");
 	return Ok;
+
+    } else if (cmd == "requestdata") {
+        queueRequest(EmsProto::addressUBA2, 0xe6, 0, 25, true);
+        return Ok;
+
+    } else if (cmd == "ventingmode") {
+        return handleEnumValue(request, EmsProto::addressUBA2, 0xe6, 21, { { "off", 0 }, { "auto", 1 }, { "on", 2 } });
+
+    } else if (cmd == "siphonfill") {
+        return handleEnumValue(request, EmsProto::addressUBA2, 0xe6, 22,
+                               { { "off", 0 }, { "minheaterpower", 1 }, { "minheatingpower", 2 } });
 
     } else if (cmd == "activeerrors") {
         startRequest(EmsProto::addressUBA2, 0x00bf, 0, 20 ,true);
@@ -605,6 +619,11 @@ ApiCommandParser::handleHkCommand(std::istream& request, uint16_t type)
 	       "activateboost on|off\n"
 	       "boosthours <hours>\n"
 	       "boosttemp <temp>\n"
+	       "frostprotectmode off|byoutdoortemp\n"
+	       "frostprotecttemp <temp>\n"
+	       "reductionmode outdoorthreshold|reduced\n"
+	       "reductionthreshold <temp>\n"
+	       "continuousheatingbelow off|<temp>\n"
 	       "requestdata\n"
 		"OK");
 	return Ok;
@@ -614,8 +633,38 @@ ApiCommandParser::handleHkCommand(std::istream& request, uint16_t type)
         queueRequest(EmsProto::addressUI800, 0x01b9, 2, 32, true);
         queueRequest(EmsProto::addressUI800, 0x01a5, 0, 46, true);
         queueRequest(EmsProto::addressUI800, 0x01af, 0, 46, true);
+        queueRequest(EmsProto::addressUI800, 0x019b, 0, 10, true);
 
         return Ok;
+
+    } else if (cmd == "frostprotectmode") {
+        // UI800: 0 = aus, 2 = Aussentemperatur (Raum-Varianten noch nicht bestaetigt)
+        return handleEnumValue(request, EmsProto::addressUI800, 0x019b, 5,
+                               { { "off", 0 }, { "byoutdoortemp", 2 } });
+
+    } else if (cmd == "frostprotecttemp") {
+        return handleSingleByteValue(request, EmsProto::addressUI800, 0x019b, 6, 1, -20, 10);
+
+    } else if (cmd == "reductionmode") {
+        // UI800: 1 = Aussentemperaturschwelle, 3 = reduzierter Betrieb
+        return handleEnumValue(request, EmsProto::addressUI800, 0x01b9, 5,
+                               { { "outdoorthreshold", 1 }, { "reduced", 3 } });
+
+    } else if (cmd == "reductionthreshold") {
+        return handleSingleByteValue(request, EmsProto::addressUI800, 0x01b9, 9, 1, -20, 10);
+
+    } else if (cmd == "continuousheatingbelow") {
+        // Durchheizen unter: -31 bedeutet aus
+        if (request.peek() == ' ') request.get();
+        if (request.peek() == 'o') {
+            std::string off;
+            request >> off;
+            if (off != "off") return InvalidArgs;
+            uint8_t data = 0xe1;
+            sendCommand(EmsProto::addressUI800, 0x01b9, 12, &data, 1);
+            return Ok;
+        }
+        return handleSingleByteValue(request, EmsProto::addressUI800, 0x01b9, 12, 1, -30, 10);
 
     } else if (cmd == "summerwinterthreshold") {
         return handleSingleByteValue(request, EmsProto::addressUI800, 0x01af, 6, 1, 10, 30);
@@ -782,6 +831,23 @@ ApiCommandParser::handleSingleByteValue(std::istream& request, uint8_t dest, uin
 }
 
 ApiCommandParser::CommandResult
+ApiCommandParser::handleEnumValue(std::istream& request, uint8_t dest, uint16_t type, uint8_t offset,
+				  const std::map<std::string, uint8_t>& values)
+{
+    std::string name;
+    request >> name;
+
+    auto iter = values.find(name);
+    if (!request || iter == values.end()) {
+	return InvalidArgs;
+    }
+
+    uint8_t data = iter->second;
+    sendCommand(dest, type, offset, &data, 1);
+    return Ok;
+}
+
+ApiCommandParser::CommandResult
 ApiCommandParser::handleWwCommand(std::istream& request)
 {
     std::string cmd;
@@ -798,6 +864,9 @@ ApiCommandParser::handleWwCommand(std::istream& request)
                "reducedtemp <temp> \n"
                "extratemp <temp> \n"
                "extra15mins <extra duration quarterly hours> \n"
+               "dailyheatup on|off \n"
+               "dailyheatuptime <hh:mm> (quarter hours) \n"
+               "dailyheatuptemp <temp> \n"
                "extra on|off \n"
                "thermdesinfect mode [on|off]\n"
                "thermdesinfect day [monday|tuesday|...|sunday]\n"
@@ -907,6 +976,23 @@ ApiCommandParser::handleWwCommand(std::istream& request)
 
         sendCommand(EmsProto::addressUI800, 0x01f5, 11, &data, 1);
         return Ok;
+
+    } else if (cmd == "dailyheatup") {
+        return handleEnumValue(request, EmsProto::addressUI800, 0x01f5, 8, { { "off", 0x00 }, { "on", 0xff } });
+
+    } else if (cmd == "dailyheatuptime") {
+        unsigned int hour, minute;
+        char colon;
+        request >> hour >> colon >> minute;
+        if (!request || colon != ':' || hour > 23 || (minute != 0 && minute != 15 && minute != 30 && minute != 45)) {
+            return InvalidArgs;
+        }
+        uint8_t data = hour * 4 + minute / 15;
+        sendCommand(EmsProto::addressUI800, 0x01f5, 9, &data, 1);
+        return Ok;
+
+    } else if (cmd == "dailyheatuptemp") {
+        return handleSingleByteValue(request, EmsProto::addressUBA2, 0xea, 17, 1, 60, 80);
 
     }
 

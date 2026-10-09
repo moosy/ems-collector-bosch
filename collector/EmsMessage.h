@@ -162,6 +162,8 @@ class EmsValue {
 	    UrlaubAbsenkungsSchwellenTemp,
 	    AbsenkungsAbbruchTemp,
 	    DurchflussMenge,
+	    AufheizTemp, /* WW: Temperatur der taeglichen Aufheizung */
+	    AufheizStunde, /* WW: Startzeit der taeglichen Aufheizung in Stunden (Viertelstunden) */
 	    /* integer */
 	    BetriebsZeit,
 	    BetriebsZeit2,
@@ -214,6 +216,10 @@ class EmsValue {
 	    Stoerung,
 	    StoerungDesinfektion,
 	    Ladevorgang,
+	    HeizbetriebAktiv, /* Kessel: Heizbetrieb eingeschaltet */
+	    WWBereitungAktiv, /* WW: Warmwasserbereitung eingeschaltet */
+	    Wechselbetrieb, /* WW: Wechselbetrieb mit Heizung */
+	    TaeglicheAufheizung, /* WW */
 	    /* enum */
 	    WWSystemType,
 	    Schaltpunkte,
@@ -229,6 +235,8 @@ class EmsValue {
 	    UrlaubAbsenkungsArt,
 	    Frostschutz,
 	    FBTyp,
+	    Entlueftung, /* Kessel: Entlueftungsbetrieb */
+	    Siphonfuellung, /* Kessel: Siphonfuellprogramm */
 	    /* kennlinie */
 	    HKKennlinie,
 	    /* error */
@@ -376,6 +384,7 @@ class EmsMessage
         void parseUBA2WWMonitorMessage();
         void parseUBA2WWMonitorMessage2();
         void parseUBA2WWParameterMessage();
+        void parseUBA2ParameterMessage();
         void parseUBA2MaintenanceSettingsMessage();
 
 
@@ -390,6 +399,7 @@ class EmsMessage
         void parseUI800HKConfiguration();
         void parseUI800HKStatusData();
         void parseUI800HKParameterMessage();
+        void parseUI800HKFrostMessage();
 	void parseRCTimeMessage();
 
 

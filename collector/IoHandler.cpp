@@ -167,6 +167,12 @@ printDescriptive(std::ostream& stream, const EmsValue& value)
 	{ EmsValue::EinschaltHysterese, "Einschalthysterese" },
 	{ EmsValue::AusschaltHysterese, "Abschalthysterese" },
 	{ EmsValue::DurchflussMenge, "Durchflussmenge" },
+	{ EmsValue::AufheizTemp, "Temperatur tägliche Aufheizung" },
+	{ EmsValue::AufheizStunde, "Startzeit tägliche Aufheizung" },
+	{ EmsValue::HeizbetriebAktiv, "Heizbetrieb eingeschaltet" },
+	{ EmsValue::WWBereitungAktiv, "Warmwasserbereitung eingeschaltet" },
+	{ EmsValue::Wechselbetrieb, "Wechselbetrieb mit Heizung" },
+	{ EmsValue::TaeglicheAufheizung, "Tägliche Aufheizung" },
 	{ EmsValue::SollLeistung, "Angeforderte Leistung" },
 
 	{ EmsValue::HeizZeit, "Heizzeit" },
@@ -233,6 +239,8 @@ printDescriptive(std::ostream& stream, const EmsValue& value)
 	{ EmsValue::Frostschutz, "Frostschutz" },
 	{ EmsValue::UrlaubAbsenkungsArt, "Urlaubsabsenkungsart" },
 	{ EmsValue::FBTyp, "Fernbedienungstyp" },
+	{ EmsValue::Entlueftung, "Entlüftungsbetrieb" },
+	{ EmsValue::Siphonfuellung, "Siphonfüllprogramm" },
 
 	{ EmsValue::HKKennlinie, "Kennlinie" },
 	{ EmsValue::Fehler, "Fehler" },
@@ -292,6 +300,8 @@ printDescriptive(std::ostream& stream, const EmsValue& value)
 	{ EmsValue::EinschaltHysterese, "K" },
 	{ EmsValue::AusschaltHysterese, "K" },
 	{ EmsValue::DurchflussMenge, "l/min" },
+	{ EmsValue::AufheizTemp, "°C" },
+	{ EmsValue::AufheizStunde, "h" },
 	{ EmsValue::IstModulation, "%" },
 	{ EmsValue::SollModulation, "%" },
 	{ EmsValue::MinModulation, "%" },
@@ -391,7 +401,15 @@ printDescriptive(std::ostream& stream, const EmsValue& value)
     };
 
     static const std::map<uint8_t, const char *> FROSTPROTECTMAPPING = {
-	{ 0, "kein" }, { 1, "Außentemperatur" }, { 2, "Raumtemperatur 5 Grad" }
+	{ 0, "kein" }, { 1, "Außentemperatur" }, { 2, "Raumtemperatur 5 Grad" }, { 3, "Raum- und Außentemperatur" }
+    };
+
+    static const std::map<uint8_t, const char *> VENTINGMAPPING = {
+	{ 0, "aus" }, { 1, "automatisch" }, { 2, "dauerhaft ein" }
+    };
+
+    static const std::map<uint8_t, const char *> SIPHONFILLMAPPING = {
+	{ 0, "aus" }, { 1, "min. Wärmeerzeugerleistung" }, { 2, "min. Heizleistung" }
     };
 
     static const std::map<uint8_t, const char *> RELEVANTVALUEMAPPING = {
@@ -473,6 +491,8 @@ printDescriptive(std::ostream& stream, const EmsValue& value)
 		case EmsValue::HeizSystem: map = &HEATINGTYPEMAPPING; break;
 		case EmsValue::AbsenkModus: map = &REDUCTIONMODEMAPPING; break;
 		case EmsValue::FBTyp: map = &REMOTETYPEMAPPING; break;
+		case EmsValue::Entlueftung: map = &VENTINGMAPPING; break;
+		case EmsValue::Siphonfuellung: map = &SIPHONFILLMAPPING; break;
 		case EmsValue::Frostschutz: map = &FROSTPROTECTMAPPING; break;
 		case EmsValue::FuehrungsGroesse: map = &RELEVANTVALUEMAPPING; break;
 		case EmsValue::UrlaubAbsenkungsArt: map = &VACATIONREDUCTIONMAPPING; break;

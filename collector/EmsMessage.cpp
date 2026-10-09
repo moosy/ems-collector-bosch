@@ -300,6 +300,7 @@ EmsMessage::handle()
                 case 0xe5: parseUBA2MonitorMessage2(); handled = true; break;
                 case 0xe9: parseUBA2WWMonitorMessage(); handled = true; break;
                 case 0xea: parseUBA2WWParameterMessage(); handled = true; break;
+                case 0xe6: parseUBA2ParameterMessage(); handled = true; break;
                 case 0x2d: parseUBA2WWMonitorMessage2(); handled = true; break;
 		case 0xbf: parseUBA2ErrorMessage(); handled = true; break;
 
@@ -317,6 +318,7 @@ EmsMessage::handle()
 		case 0x01b9: parseUI800HKConfiguration(); handled = true; break;
 		case 0x01a5: parseUI800HKStatusData(); handled = true; break;
 		case 0x01af: parseUI800HKParameterMessage(); handled = true; break;
+		case 0x019b: parseUI800HKFrostMessage(); handled = true; break;
 
 
 	    }
@@ -383,7 +385,23 @@ EmsMessage::parseUI800HKParameterMessage()
     parseNumeric(5, 1, 1, EmsValue::AuslegungsTemp, EmsValue::HK1);
     parseNumeric(6, 1, 1, EmsValue::SchwelleSommerWinter, EmsValue::HK1);
     parseEnum(7, EmsValue::Sommerbetriebsart, EmsValue::HK1);
+    parseNumeric(13, 1, 1, EmsValue::MinTemp, EmsValue::HK1, false);   // Min. Vorlauftemperatur, 0 = nicht verwenden
 
+}
+
+/* 0x019b: Heizkreis 1, Frostschutz und Vorlaufbegrenzung */
+void
+EmsMessage::parseUI800HKFrostMessage()
+{
+    // Frostschutz: UI800 0 = aus, 2 = Aussentemperatur (bestaetigt), 1 = Raum, 3 = Raum und Aussen (vermutet);
+    // abgebildet auf FROSTPROTECTMAPPING (1 = Aussen, 2 = Raum, 3 = Raum und Aussen)
+    if (canAccess(5, 1)) {
+	static const uint8_t mapping[] = { 0, 2, 1, 3 };
+	uint8_t raw = m_data[5 - m_offset];
+	m_valueHandler(EmsValue(EmsValue::Frostschutz, EmsValue::HK1, raw < 4 ? mapping[raw] : raw));
+    }
+    parseNumeric(6, 1, 1, EmsValue::FrostSchutzTemp, EmsValue::HK1);
+    parseNumeric(7, 1, 1, EmsValue::MaxTemp, EmsValue::HK1, false);
 }
 
 
@@ -419,6 +437,8 @@ EmsMessage::parseUI800WWConfiguration()
   parseBool(5, 1, EmsValue::Desinfektion, EmsValue::WW);
   parseEnum(7, EmsValue::DesinfektionTag, EmsValue::WW);
   parseNumeric(6, 1, 4, EmsValue::DesinfektionStunde, EmsValue::WW);
+  parseBool(8, 0, EmsValue::TaeglicheAufheizung, EmsValue::WW);
+  parseNumeric(9, 1, 4, EmsValue::AufheizStunde, EmsValue::WW, false);  // Viertelstunden
 
 
 }
@@ -452,6 +472,16 @@ EmsMessage::parseUI800HKConfiguration()
 
   parseNumeric(4, 1, 2, EmsValue::NachtTemp, EmsValue::HK1);
   parseNumeric(2, 1, 2, EmsValue::TagTemp, EmsValue::HK1);
+
+  // Absenkart: UI800 zaehlt anders als RC35, hier auf die RC35-Werte abgebildet
+  // (UI800 1 = Aussentemperaturschwelle, 3 = reduzierter Betrieb, 2 vermutlich Raumtemperaturschwelle)
+  if (canAccess(5, 1)) {
+      static const uint8_t mapping[] = { 0, 3, 2, 1 };
+      uint8_t raw = m_data[5 - m_offset];
+      m_valueHandler(EmsValue(EmsValue::AbsenkModus, EmsValue::HK1, raw < 4 ? mapping[raw] : raw));
+  }
+  parseNumeric(9, 1, 1, EmsValue::AbsenkungsSchwellenTemp, EmsValue::HK1);
+  parseNumeric(12, 1, 1, EmsValue::AbsenkungsAbbruchTemp, EmsValue::HK1);  // Durchheizen unter, -31 = aus
 //    parseNumeric(3, 1, 2, EmsValue::UrlaubTemp, subtype);
 //    parseNumeric(4, 1, 2, EmsValue::RaumEinfluss, subtype);
 //    parseNumeric(6, 1, 2, EmsValue::RaumOffset, subtype);
@@ -592,7 +622,28 @@ EmsMessage::parseUBA2WWParameterMessage()
     parseNumeric(16, 1, 1, EmsValue::ExtraTemp, EmsValue::WW);
     parseNumeric(18, 1, 1, EmsValue::ReduzierteTemp, EmsValue::WW);
     parseNumeric(12, 1, 1, EmsValue::DesinfektionsTemp, EmsValue::WW);
+    parseBool(5, 0, EmsValue::WWBereitungAktiv, EmsValue::WW);
+    parseNumeric(7, 1, 1, EmsValue::EinschaltHysterese, EmsValue::WW);
+    parseBool(14, 0, EmsValue::Wechselbetrieb, EmsValue::WW);
+    parseNumeric(17, 1, 1, EmsValue::AufheizTemp, EmsValue::WW, false);
+    parseNumeric(20, 1, 1, EmsValue::MaxTemp, EmsValue::WW, false);
+    parseNumeric(21, 1, 1, EmsValue::MaxModulation, EmsValue::WW, false);
 
+}
+
+/* 0xE6: Kesselparameter (UI800: Service > Gas-Brennwertgeraet > Heizen, Pumpe, Sonderfunktionen) */
+void
+EmsMessage::parseUBA2ParameterMessage()
+{
+    parseBool(0, 0, EmsValue::HeizbetriebAktiv, EmsValue::Kessel);
+    parseNumeric(1, 1, 1, EmsValue::MaxTemp, EmsValue::Kessel, false);
+    parseNumeric(4, 1, 1, EmsValue::MaxModulation, EmsValue::Kessel, false);
+    parseNumeric(8, 1, 1, EmsValue::AusschaltHysterese, EmsValue::Kessel);
+    parseNumeric(9, 1, 1, EmsValue::EinschaltHysterese, EmsValue::Kessel);
+    parseInteger(10, 1, EmsValue::AntipendelZeit, EmsValue::Kessel);
+    parseInteger(12, 1, EmsValue::NachlaufZeit, EmsValue::KesselPumpe);
+    parseEnum(21, EmsValue::Entlueftung, EmsValue::Kessel);
+    parseEnum(22, EmsValue::Siphonfuellung, EmsValue::Kessel);
 }
 
 

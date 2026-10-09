@@ -75,6 +75,12 @@ ValueApi::getTypeName(EmsValue::Type type)
 	{ EmsValue::EinschaltHysterese, "onhysteresis" },
 	{ EmsValue::AusschaltHysterese, "offhysteresis" },
 	{ EmsValue::DurchflussMenge, "flowrate" },
+	{ EmsValue::AufheizTemp, "dailyheatuptemperature" },
+	{ EmsValue::AufheizStunde, "dailyheatuphour" },
+	{ EmsValue::HeizbetriebAktiv, "heatingenabled" },
+	{ EmsValue::WWBereitungAktiv, "warmwaterenabled" },
+	{ EmsValue::Wechselbetrieb, "alternatingmode" },
+	{ EmsValue::TaeglicheAufheizung, "dailyheatup" },
 
 	{ EmsValue::HeizZeit, "heatingminutes" },
 	{ EmsValue::WarmwasserbereitungsZeit, "warmwaterminutes" },
@@ -139,6 +145,8 @@ ValueApi::getTypeName(EmsValue::Type type)
 	{ EmsValue::Frostschutz, "frostprotectmode" },
 	{ EmsValue::UrlaubAbsenkungsArt, "vacationreductionmode" },
 	{ EmsValue::FBTyp, "remotecontroltype" },
+	{ EmsValue::Entlueftung, "ventingmode" },
+	{ EmsValue::Siphonfuellung, "siphonfill" },
 
 	{ EmsValue::HKKennlinie, "characteristic" },
 	{ EmsValue::Fehler, "error" },
@@ -261,7 +269,15 @@ ValueApi::formatValue(const EmsValue& value)
     };
 
     static const std::map<uint8_t, const char *> FROSTPROTECTMAPPING = {
-	{ 0, "off" }, { 1, "byoutdoortemp" }, { 2, "byindoortemp" }
+	{ 0, "off" }, { 1, "byoutdoortemp" }, { 2, "byindoortemp" }, { 3, "byindoorandoutdoortemp" }
+    };
+
+    static const std::map<uint8_t, const char *> VENTINGMAPPING = {
+	{ 0, "off" }, { 1, "auto" }, { 2, "on" }
+    };
+
+    static const std::map<uint8_t, const char *> SIPHONFILLMAPPING = {
+	{ 0, "off" }, { 1, "minheaterpower" }, { 2, "minheatingpower" }
     };
 
     static const std::map<uint8_t, const char *> RELEVANTVALUEMAPPING = {
@@ -328,6 +344,8 @@ ValueApi::formatValue(const EmsValue& value)
 		case EmsValue::Frostschutz: map = &FROSTPROTECTMAPPING; break;
 		case EmsValue::FuehrungsGroesse: map = &RELEVANTVALUEMAPPING; break;
 		case EmsValue::FBTyp: map = &REMOTETYPEMAPPING; break;
+		case EmsValue::Entlueftung: map = &VENTINGMAPPING; break;
+		case EmsValue::Siphonfuellung: map = &SIPHONFILLMAPPING; break;
 		case EmsValue::UrlaubAbsenkungsArt: map = &VACATIONREDUCTIONMAPPING; break;
 		default: break;
 	    }

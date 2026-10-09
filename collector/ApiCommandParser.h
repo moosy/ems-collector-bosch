@@ -20,6 +20,7 @@
 #ifndef __APICOMMANDPARSER_H__
 #define __APICOMMANDPARSER_H__
 
+#include <map>
 #include <boost/logic/tribool.hpp>
 #include "CommandScheduler.h"
 #include "ValueCache.h"
@@ -81,6 +82,8 @@ class ApiCommandParser : public boost::noncopyable
 #endif
 	CommandResult handleCacheCommand(std::istream& request);
 	CommandResult handleHkCommand(std::istream& request, uint16_t base);
+	CommandResult handleEnumValue(std::istream& request, uint8_t dest, uint16_t type, uint8_t offset,
+					const std::map<std::string, uint8_t>& values);
 	CommandResult handleSingleByteValue(std::istream& request, uint8_t dest, uint16_t type,
 					    uint8_t offset, int multiplier, int min, int max);
 	CommandResult handleSetHolidayCommand(std::istream& request, uint16_t type, uint8_t offset);
