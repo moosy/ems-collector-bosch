@@ -371,8 +371,9 @@ ApiCommandParser::handleUbaCommand(std::istream& request)
             testModeRepeater.cancel();
             testModeRepeater.expires_after(std::chrono::milliseconds(1000));
             testModeRepeater.async_wait([this] (const boost::system::error_code& error) {
-              refreshTestMode();
-
+              /* the timer is cancelled when the connection (and this parser) goes away -
+               * must not touch 'this' then */
+              if (error != boost::asio::error::operation_aborted) refreshTestMode();
             });
 
             output("OK");
@@ -1480,10 +1481,12 @@ ApiCommandParser::startRequest(uint8_t dest, uint16_t type, size_t offset,
 			        size_t length, bool newRequest, bool raw)
 {
     DebugStream& debug = Options::messageDebug();
-    debug << "STARTREQUEST: dest=";
-    debug << boost::format("0x%02x ") % (unsigned int) dest << " type=";
-    debug << boost::format("0x%04x ") % (unsigned int) type << " offset=";
-    debug << boost::format("%d ") % (unsigned int) offset << " \n";
+    if (debug) {   /* DebugStream always writes to stdout - only log when message debugging is enabled */
+	debug << "STARTREQUEST: dest=";
+	debug << boost::format("0x%02x ") % (unsigned int) dest << " type=";
+	debug << boost::format("0x%04x ") % (unsigned int) type << " offset=";
+	debug << boost::format("%d ") % (unsigned int) offset << " \n";
+    }
 
 
     m_requestOffset = offset;
