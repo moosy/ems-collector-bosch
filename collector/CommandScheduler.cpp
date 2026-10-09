@@ -26,10 +26,13 @@ EmsCommandSender::handlePcMessage(const EmsMessage& message)
 
 {
     m_lastCommTimes[message.getSource()] = std::chrono::steady_clock::now();
-    m_responseTimeout.cancel();
-    if (m_currentClient) {
-	m_currentClient->onIncomingMessage(message);
+    /* Only a response to the active request finishes it. A late response to a request that was
+     * already retried (or any other message for us) must neither cancel the response timeout nor
+     * advance the queue - otherwise the client waits forever and gets neither OK nor ERRTIMEOUT. */
+    if (!m_currentClient || !m_currentClient->onIncomingMessage(message)) {
+	return;
     }
+    m_responseTimeout.cancel();
     continueWithNextRequest();
 }
 
@@ -51,12 +54,13 @@ EmsCommandSender::scheduleResponseTimeout(bool fakeAnswer)
 
         m_responseTimeout.async_wait([this] (const boost::system::error_code& error) {
             if (error != boost::asio::error::operation_aborted) {
+                /* Write commands get no response: after a short delay, acknowledge them ourselves.
+                 * Deliver directly (not via handlePcMessage(), which would also advance the queue)
+                 * and advance the queue exactly once, whether or not the client still waited. */
                 if (m_currentClient) {
-
-                    std::vector<uint8_t> fakeData(0x00, 0x01);
+                    std::vector<uint8_t> fakeData;
                     EmsMessage fake(0x0b, 0xff, 0x01, fakeData, false);
-                    handlePcMessage(fake);
-
+                    m_currentClient->onIncomingMessage(fake);
                 }
                 continueWithNextRequest();
             }

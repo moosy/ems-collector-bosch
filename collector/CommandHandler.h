@@ -20,6 +20,7 @@
 #ifndef __COMMANDHANDLER_H__
 #define __COMMANDHANDLER_H__
 
+#include <deque>
 #include <set>
 #include <boost/asio.hpp>
 #include <boost/bind/bind.hpp>
@@ -57,7 +58,7 @@ class CommandConnection : public std::enable_shared_from_this<CommandConnection>
 	void close() {
 	    m_socket.close();
 	}
-	void onIncomingMessage(const EmsMessage& message);
+	bool onIncomingMessage(const EmsMessage& message);
 	void onTimeout();
 
     private:
@@ -70,10 +71,11 @@ class CommandConnection : public std::enable_shared_from_this<CommandConnection>
                 CommandClient(std::weak_ptr<CommandConnection> connection) :
                     m_connection(connection)
                 {}
-                void onIncomingMessage(const EmsMessage& message) override {
+                bool onIncomingMessage(const EmsMessage& message) override {
                     if (auto conn = m_connection.lock()) {
-                        conn->onIncomingMessage(message);
+                        return conn->onIncomingMessage(message);
                     }
+                    return false;
                 }
                 void onTimeout() {
                     if (auto conn = m_connection.lock()) {
@@ -86,8 +88,17 @@ class CommandConnection : public std::enable_shared_from_this<CommandConnection>
 
 
 
+	/* Asio allows only one async_write per socket at a time, and the buffer must stay valid
+	 * until it completes - so queue the lines and write them one after another. */
 	void respond(const std::string& response) {
-	    boost::asio::async_write(m_socket, boost::asio::buffer(response + "\n"),
+	    bool idle = m_outQueue.empty();
+	    m_outQueue.push_back(response + "\n");
+	    if (idle) {
+		writeNext();
+	    }
+	}
+	void writeNext() {
+	    boost::asio::async_write(m_socket, boost::asio::buffer(m_outQueue.front()),
 		boost::bind(&CommandConnection::handleWrite, shared_from_this(),
 			    boost::asio::placeholders::error));
 	}
@@ -95,6 +106,7 @@ class CommandConnection : public std::enable_shared_from_this<CommandConnection>
     private:
 	boost::asio::ip::tcp::socket m_socket;
 	boost::asio::streambuf m_request;
+	std::deque<std::string> m_outQueue;
 	std::shared_ptr<EmsCommandClient> m_commandClient;
 	ApiCommandParser m_parser;
 	CommandHandler& m_handler;

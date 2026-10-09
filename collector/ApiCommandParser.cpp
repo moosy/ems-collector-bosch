@@ -219,7 +219,12 @@ ApiCommandParser::handleRcCommand(std::istream& request)
 
 
         std::wstring_convert<std::codecvt_utf8_utf16<char16_t>,char16_t> convert;
-        std::u16string wtxt = convert.from_bytes(text).substr(0,20); // ...we crop the widestring instead
+        std::u16string wtxt;
+        try {
+            wtxt = convert.from_bytes(text).substr(0,20); // ...we crop the widestring instead
+        } catch (const std::range_error&) {
+            return InvalidArgs;   // invalid UTF-8 would otherwise crash the collector
+        }
 
 
         uint8_t buf2[20];
@@ -234,7 +239,8 @@ ApiCommandParser::handleRcCommand(std::istream& request)
           sendCommand(EmsProto::addressUI800, 0x0137, chunk * 20 + (line - 1) * 40, (uint8_t *) buf2, 20);
         }
 
-        output("\nOK");
+        /* no output("OK") here: the acknowledge of the write produces it - a second OK would be
+         * taken by the client as the answer to its next command */
         return Ok;
     }
 
@@ -924,6 +930,21 @@ ApiCommandParser::handleThermDesinfectCommand(std::istream& request)
 
 
 
+bool
+ApiCommandParser::isResponseToActiveRequest(const EmsMessage& message) const
+{
+    if (!m_activeRequest) {
+	return false;
+    }
+    if (message.getType() == 0xff) {
+	/* (fake) answer to a write command */
+	return true;
+    }
+    /* same check as in onIncomingMessage(): source and expected offset must match */
+    return message.getSource() == m_requestDestination &&
+	   message.getOffset() == (m_requestResponse.size() + m_requestOffset);
+}
+
 boost::tribool
 ApiCommandParser::onIncomingMessage(const EmsMessage& message)
 {
@@ -1004,7 +1025,8 @@ ApiCommandParser::onIncomingMessage(const EmsMessage& message)
 	result = handleResponse();
     }
 
-    if (result) {
+    if (!boost::logic::indeterminate(result)) {
+	/* finished, successfully or not (FAIL must not leave the connection busy forever) */
 	m_activeRequest.reset();
     }
     return result;
@@ -1062,7 +1084,12 @@ ApiCommandParser::handleResponse()
                       inln[i] = ((buffer[2*i] & 0xff)<<8)  + (buffer[2*i+1] & 0xff);
                     }
 
-                    std::string outln = convert.to_bytes(inln);
+                    std::string outln;
+                    try {
+                        outln = convert.to_bytes(inln);
+                    } catch (const std::range_error&) {
+                        outln = "(ungueltige Zeichen)";   // invalid UTF-16 from the controller must not crash us
+                    }
 
                     output(outln);
                 }

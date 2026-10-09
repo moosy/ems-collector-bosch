@@ -45,6 +45,7 @@ class ApiCommandParser : public boost::noncopyable
 
 	CommandResult parse(std::istream& request);
 	boost::tribool onIncomingMessage(const EmsMessage& message);
+	bool isResponseToActiveRequest(const EmsMessage& message) const;
 	bool onTimeout();
 
         // NEU: Setter für post-construction Initialisierung

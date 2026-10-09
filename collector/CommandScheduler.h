@@ -30,7 +30,8 @@
 class EmsCommandClient
 {
     public:
-	virtual void onIncomingMessage(const EmsMessage& message) = 0;
+	/* returns true if the message was the response to the client's active request */
+	virtual bool onIncomingMessage(const EmsMessage& message) = 0;
 	virtual void onTimeout() = 0;
 };
 

@@ -144,20 +144,31 @@ CommandConnection::handleRequest(const boost::system::error_code& error)
 void
 CommandConnection::handleWrite(const boost::system::error_code& error)
 {
-    if (error && error != boost::asio::error::operation_aborted) {
-	m_handler.stopConnection(shared_from_this());
+    if (error) {
+	if (error != boost::asio::error::operation_aborted) {
+	    m_handler.stopConnection(shared_from_this());
+	}
+	return;
+    }
+    m_outQueue.pop_front();
+    if (!m_outQueue.empty()) {
+	writeNext();
     }
 }
 
-void
+bool
 CommandConnection::onIncomingMessage(const EmsMessage& message)
 {
+    if (!m_parser.isResponseToActiveRequest(message)) {
+	return false;
+    }
     boost::tribool result = m_parser.onIncomingMessage(message);
     if (result == true) {
 	respond("OK");
     } else if (result == false) {
 	respond("FAIL");
     }
+    return true;
 }
 
 

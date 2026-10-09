@@ -52,8 +52,12 @@ class MqttAdapter : public boost::noncopyable
 		CommandClient(MqttAdapter *adapter) :
 		    m_adapter(adapter)
 		{ }
-		virtual void onIncomingMessage(const EmsMessage& message) override {
+		virtual bool onIncomingMessage(const EmsMessage& message) override {
+		    if (!m_adapter->m_commandParser->isResponseToActiveRequest(message)) {
+			return false;
+		    }
 		    m_adapter->m_commandParser->onIncomingMessage(message);
+		    return true;
 		}
 		virtual void onTimeout() override {
 		    m_adapter->m_commandParser->onTimeout();
