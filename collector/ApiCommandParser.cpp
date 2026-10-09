@@ -129,9 +129,9 @@ ApiCommandParser::handleRcCommand(std::istream& request)
 	return Ok;
 
     } else if (cmd == "requestdata") {
-        startRequest(EmsProto::addressUI800, 0x0140, 0, 46, true, true);
-        startRequest(EmsProto::addressUI800, 0x00bf, 0, 20 ,true, true);
-        startRequest(EmsProto::addressUBA2, 0x00bf, 0, 20 ,true, true);
+        queueRequest(EmsProto::addressUI800, 0x0140, 0, 46, true);
+        queueRequest(EmsProto::addressUI800, 0x00bf, 0, 20 , true);
+        queueRequest(EmsProto::addressUBA2, 0x00bf, 0, 20 , true);
         return Ok;
 
 
@@ -565,9 +565,9 @@ ApiCommandParser::handleHkCommand(std::istream& request, uint16_t type)
 
 
     } else if (cmd == "requestdata") {
-        startRequest(EmsProto::addressUI800, 0x01b9, 2, 32, true, true);
-        startRequest(EmsProto::addressUI800, 0x01a5, 0, 46, true, true);
-        startRequest(EmsProto::addressUI800, 0x01af, 0, 46, true, true);
+        queueRequest(EmsProto::addressUI800, 0x01b9, 2, 32, true);
+        queueRequest(EmsProto::addressUI800, 0x01a5, 0, 46, true);
+        queueRequest(EmsProto::addressUI800, 0x01af, 0, 46, true);
 
         return Ok;
 
@@ -832,8 +832,8 @@ ApiCommandParser::handleWwCommand(std::istream& request)
 
 
     } else if (cmd == "requestdata") {
-        startRequest(EmsProto::addressUBA2, 0xea, 0, 25, true, true);
-        startRequest(EmsProto::addressUI800, 0x01f5, 0, 21, true, true);
+        queueRequest(EmsProto::addressUBA2, 0xea, 0, 25, true);
+        queueRequest(EmsProto::addressUI800, 0x01f5, 0, 21, true);
 
         return Ok;
     } else if (cmd == "thermdesinfect") {
@@ -1017,7 +1017,14 @@ ApiCommandParser::onIncomingMessage(const EmsMessage& message)
 		outputStream << boost::format("0x%02x ") % (unsigned int) m_requestResponse[i];
 	    }
 	    output(outputStream.str());
-	    result = true;
+	    if (!m_followUps.empty()) {
+		FollowUpRequest next = m_followUps.front();
+		m_followUps.pop_front();
+		startRequest(next.dest, next.type, next.offset, next.length, true, next.raw);
+		result = boost::indeterminate;   /* OK after the last one */
+	    } else {
+		result = true;
+	    }
 	} else {
 	    result = boost::indeterminate;
 	}
@@ -1028,6 +1035,7 @@ ApiCommandParser::onIncomingMessage(const EmsMessage& message)
     if (!boost::logic::indeterminate(result)) {
 	/* finished, successfully or not (FAIL must not leave the connection busy forever) */
 	m_activeRequest.reset();
+	m_followUps.clear();
     }
     return result;
 }
@@ -1229,6 +1237,7 @@ ApiCommandParser::onTimeout()
     m_retriesLeft--;
     if (m_retriesLeft == 0) {
 	m_activeRequest.reset();
+	m_followUps.clear();
 	return true;
     }
 
@@ -1454,6 +1463,16 @@ ApiCommandParser::parseHolidayEntry(const std::string& string, EmsProto::Holiday
     }
 
     return true;
+}
+
+void
+ApiCommandParser::queueRequest(uint8_t dest, uint16_t type, size_t offset, size_t length, bool raw)
+{
+    if (m_activeRequest) {
+	m_followUps.push_back({ dest, type, offset, length, raw });
+    } else {
+	startRequest(dest, type, offset, length, true, raw);
+    }
 }
 
 void

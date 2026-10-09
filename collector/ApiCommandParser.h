@@ -24,6 +24,7 @@
 #include "CommandScheduler.h"
 #include "ValueCache.h"
 #include <codecvt>
+#include <deque>
 
 class ApiCommandParser : public boost::noncopyable
 {
@@ -85,6 +86,7 @@ class ApiCommandParser : public boost::noncopyable
 	bool parseHolidayEntry(const std::string& string, EmsProto::HolidayEntry *entry);
 
 	boost::tribool handleResponse();
+	void queueRequest(uint8_t dest, uint16_t type, size_t offset, size_t length, bool raw);
 	void startRequest(uint8_t dest, uint16_t type, size_t offset, size_t length,
 			  bool newRequest = true, bool raw = false);
 	bool continueRequest();
@@ -121,6 +123,12 @@ class ApiCommandParser : public boost::noncopyable
 	uint16_t m_requestType;
 	size_t m_parsePosition;
 	bool m_outputRawData;
+	/* further requests of the same command (e.g. "hk1 requestdata"): sent one after another,
+	 * OK only after the last one - the parser can only track one request at a time */
+	struct FollowUpRequest {
+	    uint8_t dest; uint16_t type; size_t offset; size_t length; bool raw;
+	};
+	std::deque<FollowUpRequest> m_followUps;
 	boost::asio::steady_timer testModeRepeater;
 };
 
